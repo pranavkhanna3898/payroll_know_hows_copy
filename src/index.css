@@ -776,3 +776,118 @@ body {
   border-radius: 12px;
   font-weight: 600;
 }
+
+/* ---- Redesigned Cycle Flow Cards & Slabs Tables ---- */
+.detailed-card {
+  border-top: none;
+  border-left: 4px solid #cbd5e1;
+  padding: 20px;
+}
+
+.cycle-step-active-card {
+  border-left-color: #3b82f6 !important;
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.4);
+  transform: scale(1.02);
+  z-index: 10;
+}
+
+.cycle-steps-list {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding-left: 40px;
+}
+
+.detailed-card-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+
+.detailed-card-header .step-id {
+  margin-bottom: 0;
+}
+
+.detailed-card-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  margin-top: 16px;
+  background: #f8fafc;
+  padding: 16px;
+  border-radius: 8px;
+  border: 1px solid #e2e8f0;
+}
+
+.detail-section {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.detail-label {
+  font-size: 11px;
+  text-transform: uppercase;
+  font-weight: 700;
+  color: #64748b;
+  letter-spacing: 0.5px;
+}
+
+.detail-value {
+  font-size: 13px;
+  color: #0f172a;
+  line-height: 1.5;
+}
+
+.formula-text {
+  font-family: monospace;
+  background: #e2e8f0;
+  padding: 6px 10px;
+  border-radius: 4px;
+  color: #1e3a8a;
+  display: inline-block;
+  font-size: 12px;
+  word-break: break-word;
+}
+
+.text-muted {
+  color: #475569;
+}
+
+/* Slabs Table in Detail Tab */
+.slabs-table-container {
+  overflow-x: auto;
+  border-radius: 0 0 6px 6px;
+}
+
+.slabs-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+  text-align: left;
+}
+
+.slabs-table th {
+  background: #f1f5f9;
+  padding: 10px;
+  font-weight: 600;
+  color: #334155;
+  border-bottom: 2px solid #cbd5e1;
+}
+
+.slabs-table td {
+  padding: 10px;
+  border-bottom: 1px solid #e2e8f0;
+  color: #475569;
+}
+
+.slabs-table tr:hover td {
+  background: #f8fafc;
+}
+
+@media (max-width: 640px) {
+  .detailed-card-grid {
+    grid-template-columns: 1fr;
+  }
+}

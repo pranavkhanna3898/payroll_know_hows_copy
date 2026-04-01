@@ -4,7 +4,6 @@ import { PAYROLL_CYCLE } from '../data';
 export default function CycleTab() {
   const [hoveredStep, setHoveredStep] = useState(null);
 
-  // Helper to check if a step is a dependency of the hovered step
   const isDependency = (stepId) => {
     if (!hoveredStep) return false;
     let hoveredObj = null;
@@ -46,15 +45,15 @@ export default function CycleTab() {
               <div className="phase-timeline">{phase.timeline}</div>
             </div>
             
-            <div className="cycle-steps-grid">
+            <div className="cycle-steps-list">
               {phase.steps.map((step) => {
                 const isDep = isDependency(step.id);
                 const isDependant = isDependentOnHover(step.id);
                 const isHovered = hoveredStep === step.id;
                 
-                let cardClass = "cycle-step-card";
+                let cardClass = "cycle-step-card detailed-card";
                 if (hoveredStep && !isHovered && !isDep && !isDependant) cardClass += " cycle-step-dimmed";
-                if (isHovered) cardClass += " cycle-step-active";
+                if (isHovered) cardClass += " cycle-step-active-card";
                 if (isDep) cardClass += " cycle-step-dependency";
                 if (isDependant) cardClass += " cycle-step-dependent";
 
@@ -64,14 +63,47 @@ export default function CycleTab() {
                     className={cardClass}
                     onMouseEnter={() => setHoveredStep(step.id)}
                     onMouseLeave={() => setHoveredStep(null)}
-                    style={{ borderTopColor: isHovered || isDep || isDependant ? undefined : phase.color }}
+                    style={{ borderLeftColor: isHovered || isDep || isDependant ? undefined : phase.color }}
                   >
-                    <div className="step-id">{step.id.toUpperCase().replace('-', ' ')}</div>
-                    <div className="step-title">{step.title}</div>
-                    <div className="step-desc">{step.description}</div>
+                    <div className="detailed-card-header">
+                      <div className="step-id">{step.id.toUpperCase().replace('-', ' ')}</div>
+                      <div className="step-title">{step.title}</div>
+                    </div>
+                    <div className="step-desc" style={{ fontSize: '13px', fontWeight: 500, color: '#334155' }}>
+                      {step.description}
+                    </div>
+
+                    <div className="detailed-card-grid">
+                      {step.dataDependencies && step.dataDependencies.length > 0 && (
+                        <div className="detail-section">
+                          <div className="detail-label">📥 Data Inputs / Dependencies</div>
+                          <div className="detail-value">
+                            {step.dataDependencies.join(" • ")}
+                          </div>
+                        </div>
+                      )}
+                      
+                      {step.calculationLogic && (
+                        <div className="detail-section">
+                          <div className="detail-label">🧮 Calculation Logic</div>
+                          <div className="detail-value formula-text">
+                            {step.calculationLogic}
+                          </div>
+                        </div>
+                      )}
+
+                      {step.interdependenciesText && (
+                        <div className="detail-section" style={{ gridColumn: '1 / -1' }}>
+                          <div className="detail-label">🔗 Interdependencies & Flow</div>
+                          <div className="detail-value text-muted">
+                            {step.interdependenciesText}
+                          </div>
+                        </div>
+                      )}
+                    </div>
                     
                     {step.statutory && step.statutory.length > 0 && (
-                      <div className="step-statutory-tags">
+                      <div className="step-statutory-tags" style={{ marginTop: 16 }}>
                         {step.statutory.map((stat, i) => (
                           <span key={i} className="stat-tag">🏛️ {stat}</span>
                         ))}

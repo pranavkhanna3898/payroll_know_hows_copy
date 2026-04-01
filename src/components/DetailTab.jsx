@@ -1,4 +1,4 @@
-import { STATES, STATUS, CATEGORIES } from '../data';
+import { STATES, STATUS, CATEGORIES, PT_DETAILS, LWF_DETAILS } from '../data';
 
 function countByStatus(comp) {
   const counts = { M: 0, V: 0, O: 0, N: 0, C: 0 };
@@ -87,6 +87,112 @@ export default function DetailTab({ selectedComponent, onComponentSelect, onBack
             <div style={{ fontSize: 13, color: "#0f172a" }}>{selectedComponent.taxNote}</div>
           </div>
         </div>
+
+        {selectedComponent.id === 'pt' && (
+          <div className="detail-slabs-section" style={{ marginTop: 24, marginBottom: 24 }}>
+            <h3 style={{ fontSize: 14, color: '#1e293b', marginBottom: 12 }}>🏛️ State-wise Professional Tax Slabs</h3>
+            <div className="slabs-table-container">
+              <table className="slabs-table">
+                <thead>
+                  <tr>
+                    <th>State/UT</th>
+                    <th>Rate</th>
+                    <th>Frequency</th>
+                    <th>Notes</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {Object.entries(PT_DETAILS).map(([stCode, data]) => {
+                    const stName = STATES.find(s => s.code === stCode)?.name || stCode;
+                    return (
+                      <tr key={stCode}>
+                        <td style={{ fontWeight: 500 }}>{stName}</td>
+                        <td>{data.rate}</td>
+                        <td>{data.freq}</td>
+                        <td>{data.notes}</td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+
+        {(selectedComponent.id === 'lwf_ee' || selectedComponent.id === 'lwf_er') && (
+          <div className="detail-slabs-section" style={{ marginTop: 24, marginBottom: 24 }}>
+            <h3 style={{ fontSize: 14, color: '#1e293b', marginBottom: 12 }}>⚖️ State-wise LWF Contributions</h3>
+            <div className="slabs-table-container">
+              <table className="slabs-table">
+                <thead>
+                  <tr>
+                    <th>State/UT</th>
+                    <th>Employee Share</th>
+                    <th>Employer Share</th>
+                    <th>Frequency</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {Object.entries(LWF_DETAILS).map(([stCode, data]) => {
+                    const stName = STATES.find(s => s.code === stCode)?.name || stCode;
+                    return (
+                      <tr key={stCode}>
+                        <td style={{ fontWeight: 500 }}>{stName}</td>
+                        <td>{data.emp}</td>
+                        <td>{data.er}</td>
+                        <td>{data.freq}</td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+
+        {selectedComponent.id === 'tds' && (
+          <div className="detail-slabs-section" style={{ marginTop: 24, marginBottom: 24 }}>
+            <h3 style={{ fontSize: 14, color: '#1e293b', marginBottom: 12 }}>📊 Income Tax Regimes (FY 2024-25)</h3>
+            <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1fr)', gap: 16 }}>
+              <div className="slabs-table-wrapper">
+                <div style={{ background: '#f8fafc', padding: '10px 12px', fontWeight: 600, border: '1px solid #e2e8f0', borderBottom: 'none', borderRadius: '6px 6px 0 0', fontSize: 13 }}>New Regime (Default)</div>
+                <div className="slabs-table-container" style={{ marginTop: 0 }}>
+                  <table className="slabs-table" style={{ border: '1px solid #e2e8f0', margin: 0 }}>
+                    <thead>
+                      <tr><th>Income Slab</th><th>Tax Rate</th></tr>
+                    </thead>
+                    <tbody>
+                      <tr><td>Up to ₹3,00,000</td><td>Nil</td></tr>
+                      <tr><td>₹3,00,001 - ₹7,00,000</td><td>5%</td></tr>
+                      <tr><td>₹7,00,001 - ₹10,00,000</td><td>10%</td></tr>
+                      <tr><td>₹10,00,001 - ₹12,00,000</td><td>15%</td></tr>
+                      <tr><td>₹12,00,001 - ₹15,00,000</td><td>20%</td></tr>
+                      <tr><td>Above ₹15,00,000</td><td>30%</td></tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+              <div className="slabs-table-wrapper">
+                <div style={{ background: '#f8fafc', padding: '10px 12px', fontWeight: 600, border: '1px solid #e2e8f0', borderBottom: 'none', borderRadius: '6px 6px 0 0', fontSize: 13 }}>Old Regime</div>
+                <div className="slabs-table-container" style={{ marginTop: 0 }}>
+                  <table className="slabs-table" style={{ border: '1px solid #e2e8f0', margin: 0 }}>
+                    <thead>
+                      <tr><th>Income Slab</th><th>Tax Rate</th></tr>
+                    </thead>
+                    <tbody>
+                      <tr><td>Up to ₹2,50,000</td><td>Nil</td></tr>
+                      <tr><td>₹2,50,001 - ₹5,00,000</td><td>5%</td></tr>
+                      <tr><td>₹5,00,001 - ₹10,00,000</td><td>20%</td></tr>
+                      <tr><td>Above ₹10,00,000</td><td>30%</td></tr>
+                      <tr><td colSpan="2" style={{ fontStyle: 'italic', fontSize: '11px' }}>Exemptions under Ch VI-A available.</td></tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
         <div className="detail-states-section">
           <div className="detail-states-heading">State-wise Applicability</div>
           <div className="detail-states-grid">
