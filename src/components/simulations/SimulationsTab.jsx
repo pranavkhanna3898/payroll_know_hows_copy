@@ -12,6 +12,9 @@ export default function SimulationsTab() {
     monthlyBasic: 25000,
     monthlyHRA: 10000,
     monthlySpecial: 15000,
+    monthlyReimbursements: 0,
+    employerPFMatch: 1800,
+    employerESIMatch: 0,
     daysInMonth: 30,
     lopDays: 0,
     overtimeHours: 0,
@@ -19,6 +22,7 @@ export default function SimulationsTab() {
     arrears: 0,
 
     // Step 2 Inputs
+    taxRegime: "new",
     investments80C: 0,
     medical80D: 0,
     hraExempt: 0,
@@ -41,7 +45,8 @@ export default function SimulationsTab() {
   const standardBasic = data.monthlyBasic;
   const standardHRA = data.monthlyHRA;
   const standardSpecial = data.monthlySpecial;
-  const monthlyCTC = standardBasic + standardHRA + standardSpecial;
+  const standardGross = standardBasic + standardHRA + standardSpecial;
+  const totalMonthlyCTC = standardGross + data.monthlyReimbursements + data.employerPFMatch + data.employerESIMatch;
 
   const attendanceFactor = Math.max(0, (data.daysInMonth - data.lopDays) / data.daysInMonth);
   const basic = standardBasic * attendanceFactor;
@@ -51,26 +56,58 @@ export default function SimulationsTab() {
   
   const grossSalary = basic + hra + special + overtimePay + data.arrears;
 
-  // Tax derivations (Simplified Old Regime Projection)
-  const annualGross = (monthlyCTC * 11) + grossSalary; 
-  const total80C = Math.min(150000, data.investments80C);
-  const taxableIncome = Math.max(0, annualGross - total80C - data.medical80D - data.hraExempt - 50000); 
+  const annualGross = (standardGross * 11) + grossSalary; 
   
+  let taxableIncome = 0;
   let annualTax = 0;
   let taxFormulaDetail = "0";
 
-  if (taxableIncome > 1000000) {
-    annualTax = 112500 + ((taxableIncome - 1000000) * 0.3);
-    taxFormulaDetail = `112,500 + ((${taxableIncome} - 1,000,000) * 30%) = ${annualTax}`;
-  } else if (taxableIncome > 500000) {
-    annualTax = 12500 + ((taxableIncome - 500000) * 0.2);
-    taxFormulaDetail = `12,500 + ((${taxableIncome} - 500,000) * 20%) = ${annualTax}`;
-  } else if (taxableIncome > 250000) {
-    annualTax = (taxableIncome - 250000) * 0.05;
-    taxFormulaDetail = `(${taxableIncome} - 250,000) * 5% = ${annualTax}`;
-    if (taxableIncome <= 500000) {
-       annualTax = 0; // standard rebate
-       taxFormulaDetail = `${taxFormulaDetail} -> Rebate u/s 87A applies -> 0`;
+  if (data.taxRegime === 'old') {
+    const total80C = Math.min(150000, data.investments80C);
+    taxableIncome = Math.max(0, annualGross - total80C - data.medical80D - data.hraExempt - 50000); 
+    
+    if (taxableIncome > 1000000) {
+      annualTax = 112500 + ((taxableIncome - 1000000) * 0.3);
+      taxFormulaDetail = `112k + ((${taxableIncome} - 10L) * 30%) = ${annualTax}`;
+    } else if (taxableIncome > 500000) {
+      annualTax = 12500 + ((taxableIncome - 500000) * 0.2);
+      taxFormulaDetail = `12.5k + ((${taxableIncome} - 5L) * 20%) = ${annualTax}`;
+    } else if (taxableIncome > 250000) {
+      annualTax = (taxableIncome - 250000) * 0.05;
+      taxFormulaDetail = `(${taxableIncome} - 2.5L) * 5% = ${annualTax}`;
+      if (taxableIncome <= 500000) {
+         annualTax = 0; 
+         taxFormulaDetail = `${taxFormulaDetail} -> Old Rebate u/s 87A -> 0`;
+      }
+    }
+  } else {
+    // New Tax Regime (FY 2026-27 default)
+    taxableIncome = Math.max(0, annualGross - 75000); // 75k standard deduction
+    
+    // FY 2026-27 Slabs
+    if (taxableIncome > 2400000) {
+      annualTax = 460000 + ((taxableIncome - 2400000) * 0.3);
+      taxFormulaDetail = `4.6L + ((${taxableIncome} - 24L) * 30%) = ${annualTax}`;
+    } else if (taxableIncome > 2000000) {
+      annualTax = 360000 + ((taxableIncome - 2000000) * 0.25);
+      taxFormulaDetail = `3.6L + ((${taxableIncome} - 20L) * 25%) = ${annualTax}`;
+    } else if (taxableIncome > 1600000) {
+      annualTax = 280000 + ((taxableIncome - 1600000) * 0.2);
+      taxFormulaDetail = `2.8L + ((${taxableIncome} - 16L) * 20%) = ${annualTax}`;
+    } else if (taxableIncome > 1200000) {
+      annualTax = 220000 + ((taxableIncome - 1200000) * 0.15);
+      taxFormulaDetail = `2.2L + ((${taxableIncome} - 12L) * 15%) = ${annualTax}`;
+    } else if (taxableIncome > 800000) {
+      annualTax = 180000 + ((taxableIncome - 800000) * 0.1);
+      taxFormulaDetail = `1.8L + ((${taxableIncome} - 8L) * 10%) = ${annualTax}`;
+    } else if (taxableIncome > 400000) {
+      annualTax = (taxableIncome - 400000) * 0.05;
+      taxFormulaDetail = `(${taxableIncome} - 4L) * 5% = ${annualTax}`;
+    }
+    
+    if (taxableIncome <= 1200000) {
+      annualTax = 0;
+      taxFormulaDetail = `${taxFormulaDetail} -> New Rebate u/s 87A (Up to 12L) -> 0`;
     }
   }
   
@@ -95,7 +132,7 @@ export default function SimulationsTab() {
     basic, hra, special, overtimePay, grossSalary, attendanceFactor,
     taxableIncome, annualTax, tds,
     pfEmployee, pfEmployer, esiEmployee, esiEmployer, pt, lwf,
-    totalDeductions, netPay, taxFormulaDetail
+    totalDeductions, netPay, taxFormulaDetail, totalMonthlyCTC, standardGross
   };
 
   return (

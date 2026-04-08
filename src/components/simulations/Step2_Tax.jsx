@@ -2,7 +2,7 @@ import React from 'react';
 
 export default function Step2_Tax({ state }) {
   const {
-    investments80C, medical80D, hraExempt, tdsDeductedSoFar, monthsRemaining,
+    taxRegime, investments80C, medical80D, hraExempt, tdsDeductedSoFar, monthsRemaining,
     updateData, grossSalary, taxableIncome, annualTax, tds, taxFormulaDetail
   } = state;
 
@@ -14,22 +14,36 @@ export default function Step2_Tax({ state }) {
       </div>
 
       <div className="sim-card-body">
-         <div className="sim-badge" style={{marginBottom: 16}}>
-          <span>Inputs From Step 1:</span> Current Gross = ₹{grossSalary.toLocaleString(undefined, {maximumFractionDigits: 2})}
+        <div style={{display: 'flex', gap: 12, marginBottom: 16, alignItems: 'center'}}>
+          <div className="sim-badge" style={{margin: 0}}>
+            <span>Inputs From Step 1:</span> Current Gross = ₹{grossSalary.toLocaleString(undefined, {maximumFractionDigits: 2})}
+          </div>
+          <div style={{display: 'flex', background: '#e2e8f0', padding: 3, borderRadius: 8}}>
+            <button 
+              style={{padding: '6px 12px', border: 'none', borderRadius: 6, fontWeight: 600, fontSize: 12, cursor: 'pointer', background: taxRegime === 'old' ? 'white' : 'transparent', color: taxRegime === 'old' ? '#0f172a' : '#64748b', transition: 'all 0.2s'}}
+              onClick={() => updateData('taxRegime', 'old')}>
+              Old Tax Regime
+            </button>
+            <button 
+              style={{padding: '6px 12px', border: 'none', borderRadius: 6, fontWeight: 600, fontSize: 12, cursor: 'pointer', background: taxRegime === 'new' ? 'white' : 'transparent', color: taxRegime === 'new' ? '#0f172a' : '#64748b', transition: 'all 0.2s'}}
+              onClick={() => updateData('taxRegime', 'new')}>
+              New Tax Regime (FY26-27 Default)
+            </button>
+          </div>
         </div>
 
         <div className="sim-input-grid">
-          <div className="sim-input-group">
+          <div className="sim-input-group" style={{opacity: taxRegime === 'new' ? 0.4 : 1, transition: 'opacity 0.2s'}}>
             <label>80C Investments (Max 1.5L)</label>
-            <input type="number" value={investments80C} onChange={(e) => updateData('investments80C', e.target.value)} />
+            <input type="number" value={investments80C} disabled={taxRegime === 'new'} onChange={(e) => updateData('investments80C', e.target.value)} />
           </div>
-          <div className="sim-input-group">
+          <div className="sim-input-group" style={{opacity: taxRegime === 'new' ? 0.4 : 1, transition: 'opacity 0.2s'}}>
             <label>80D Medical Premium</label>
-            <input type="number" value={medical80D} onChange={(e) => updateData('medical80D', e.target.value)} />
+            <input type="number" value={medical80D} disabled={taxRegime === 'new'} onChange={(e) => updateData('medical80D', e.target.value)} />
           </div>
-          <div className="sim-input-group">
+          <div className="sim-input-group" style={{opacity: taxRegime === 'new' ? 0.4 : 1, transition: 'opacity 0.2s'}}>
             <label>Exempt HRA (Sec 10)</label>
-            <input type="number" value={hraExempt} onChange={(e) => updateData('hraExempt', e.target.value)} />
+            <input type="number" value={hraExempt} disabled={taxRegime === 'new'} onChange={(e) => updateData('hraExempt', e.target.value)} />
           </div>
           <div className="sim-input-group">
             <label>TDS Deducted So Far (YTD)</label>
@@ -44,8 +58,8 @@ export default function Step2_Tax({ state }) {
         <div className="sim-output-box">
           <h4>Calculation: Taxable Income & Tax Formula</h4>
           <div className="code-content" style={{background: 'transparent', padding: '0 0 10px', color: '#475569', fontSize: 12}}>
-             Annual Gross Est = (Monthly Gross {Math.round(grossSalary).toLocaleString()} * 11) + {Math.round(grossSalary).toLocaleString()} <br/>
-             Net Taxable = Annual Gross - 80C - 80D - HRA Exempt - 50,000 (Std Ded)<br/>
+             Annual Gross = (Monthly Gross {Math.round(grossSalary).toLocaleString()} * 11) + {Math.round(grossSalary).toLocaleString()} <br/>
+             Net Taxable = Annual Gross {taxRegime === 'old' ? '- 80C - 80D - HRA - 50k (Std Ded)' : '- 75,000 (Standard Deduction)'}<br/>
              Tax Formula: <span style={{fontWeight: 700}}>{taxFormulaDetail}</span><br/>
              Monthly TDS = (Annual Tax - Deducted So Far) / Remaining Months
           </div>
