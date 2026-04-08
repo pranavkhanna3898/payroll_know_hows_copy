@@ -57,7 +57,7 @@ export default function Step1_Salary({ state }) {
             <span>₹ {hra.toLocaleString(undefined, {maximumFractionDigits: 2})}</span>
           </div>
           <div className="sim-line-item">
-            <span>Special Allowance (Prorated):</span>
+            <span>Other Taxable Allowances (Prorated):</span>
             <span>₹ {special.toLocaleString(undefined, {maximumFractionDigits: 2})}</span>
           </div>
           <div className="sim-line-item">

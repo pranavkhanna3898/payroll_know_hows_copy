@@ -9,12 +9,14 @@ import Step5_Statutory from './Step5_Statutory';
 export default function SimulationsTab() {
   const [data, setData] = useState({
     // Step 1 Inputs
-    monthlyBasic: 25000,
-    monthlyHRA: 10000,
-    monthlySpecial: 15000,
-    monthlyReimbursements: 0,
-    employerPFMatch: 1800,
-    employerESIMatch: 0,
+    salaryComponents: [
+      { id: '1', name: 'Basic', type: 'earnings_basic', amount: 25000 },
+      { id: '2', name: 'HRA', type: 'earnings_hra', amount: 10000 },
+      { id: '3', name: 'Special Allowance', type: 'earnings_allowance', amount: 15000 },
+      { id: '4', name: 'Reimbursements', type: 'reimbursement', amount: 0 },
+      { id: '5', name: 'Employer PF Contribution', type: 'employer_contrib', amount: 1800 },
+      { id: '6', name: 'Employer ESI Contribution', type: 'employer_contrib', amount: 0 }
+    ],
     daysInMonth: 30,
     lopDays: 0,
     overtimeHours: 0,
@@ -41,12 +43,51 @@ export default function SimulationsTab() {
     setData(prev => ({ ...prev, [key]: numValue }));
   };
 
+  const updateComponent = (id, field, value) => {
+    setData(prev => ({
+      ...prev,
+      salaryComponents: prev.salaryComponents.map(c => 
+        c.id === id ? { ...c, [field]: field === 'amount' ? (isNaN(Number(value)) ? 0 : Number(value)) : value } : c
+      )
+    }));
+  };
+
+  const addComponent = () => {
+    setData(prev => ({
+      ...prev,
+      salaryComponents: [
+        ...prev.salaryComponents,
+        { id: Date.now().toString(), name: 'New Component', type: 'earnings_allowance', amount: 0 }
+      ]
+    }));
+  };
+
+  const removeComponent = (id) => {
+    setData(prev => ({
+      ...prev,
+      salaryComponents: prev.salaryComponents.filter(c => c.id !== id)
+    }));
+  };
+
   // Shared derived calculations
-  const standardBasic = data.monthlyBasic;
-  const standardHRA = data.monthlyHRA;
-  const standardSpecial = data.monthlySpecial;
+  let standardBasic = 0;
+  let standardHRA = 0;
+  let standardSpecial = 0;
+  let monthlyReimbursements = 0;
+  let employerContribs = 0;
+  let employeeDeductions = 0;
+
+  data.salaryComponents.forEach(c => {
+    if (c.type === 'earnings_basic') standardBasic += c.amount;
+    else if (c.type === 'earnings_hra') standardHRA += c.amount;
+    else if (c.type === 'earnings_allowance') standardSpecial += c.amount;
+    else if (c.type === 'reimbursement') monthlyReimbursements += c.amount;
+    else if (c.type === 'employer_contrib') employerContribs += c.amount;
+    else if (c.type === 'employee_deduction') employeeDeductions += c.amount;
+  });
+
   const standardGross = standardBasic + standardHRA + standardSpecial;
-  const totalMonthlyCTC = standardGross + data.monthlyReimbursements + data.employerPFMatch + data.employerESIMatch;
+  const totalMonthlyCTC = standardGross + monthlyReimbursements + employerContribs;
 
   const attendanceFactor = Math.max(0, (data.daysInMonth - data.lopDays) / data.daysInMonth);
   const basic = standardBasic * attendanceFactor;
@@ -122,13 +163,13 @@ export default function SimulationsTab() {
   const pt = 200; 
   const lwf = 25; 
   
-  const totalDeductions = pfEmployee + esiEmployee + pt + lwf + tds;
+  const totalDeductions = pfEmployee + esiEmployee + pt + lwf + tds + employeeDeductions;
   const netPay = grossSalary - totalDeductions;
 
   const simState = {
     ...data,
-    updateData,
-    standardBasic, standardHRA, standardSpecial,
+    updateData, updateComponent, addComponent, removeComponent,
+    standardBasic, standardHRA, standardSpecial, monthlyReimbursements, employerContribs, employeeDeductions,
     basic, hra, special, overtimePay, grossSalary, attendanceFactor,
     taxableIncome, annualTax, tds,
     pfEmployee, pfEmployer, esiEmployee, esiEmployer, pt, lwf,

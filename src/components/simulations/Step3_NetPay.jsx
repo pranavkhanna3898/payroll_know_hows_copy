@@ -2,7 +2,7 @@ import React from 'react';
 
 export default function Step3_NetPay({ state }) {
   const {
-    grossSalary, basic, tds, pfEmployee, esiEmployee, pt, lwf, totalDeductions, netPay
+    grossSalary, basic, tds, pfEmployee, esiEmployee, pt, lwf, totalDeductions, netPay, employeeDeductions
   } = state;
 
   return (
@@ -22,7 +22,7 @@ export default function Step3_NetPay({ state }) {
           <div className="code-content" style={{background: 'transparent', padding: '0 0 10px', color: '#475569', fontSize: 12}}>
              PF Output = MIN(1800, Basic {Math.round(basic).toLocaleString()} * 12%)<br/>
              ESI Output = If Gross {Math.round(grossSalary).toLocaleString()} &le; 21000 then (Gross * 0.75%) else 0<br/>
-             Net Pay = Gross - (PF + ESI + PT + LWF + Monthly TDS)
+             Net Pay = Gross - (PF + ESI + PT + LWF + TDS + Custom Deductions)
           </div>
           <div className="sim-line-item">
             <span>Provident Fund (PF) Employee Share (12% of Basic):</span>
@@ -44,6 +44,12 @@ export default function Step3_NetPay({ state }) {
             <span>TDS (From Step 2):</span>
             <span>- ₹ {tds.toLocaleString(undefined, {maximumFractionDigits: 2})}</span>
           </div>
+          {employeeDeductions > 0 && (
+            <div className="sim-line-item">
+              <span>Other Custom Deductions (From Step 0):</span>
+              <span>- ₹ {employeeDeductions.toLocaleString(undefined, {maximumFractionDigits: 2})}</span>
+            </div>
+          )}
           <div className="sim-line-item sim-total-deduction" style={{borderTop: '1px solid #e2e8f0', marginTop: 8, paddingTop: 8, fontWeight: 600}}>
             <span>Total Deductions:</span>
             <span>- ₹ {totalDeductions.toLocaleString(undefined, {maximumFractionDigits: 2})}</span>
