@@ -9,6 +9,34 @@ import { CATEGORIES } from '../../data/categories';
 
 const MATRIX_COMPONENTS = CATEGORIES.flatMap(cat => cat.components);
 
+const getPT = (st, gross) => {
+  const ptMatrix = MATRIX_COMPONENTS.find(c => c.id === 'pt');
+  if (ptMatrix && ptMatrix.states && ptMatrix.states[st] === 'N') return 0;
+  if (st === 'KA') return gross >= 25000 ? 200 : 0;
+  if (st === 'MH') return gross >= 10000 ? 200 : (gross >= 7500 ? 175 : 0);
+  if (st === 'WB') return gross > 40000 ? 200 : (gross > 25000 ? 150 : (gross > 15000 ? 130 : 0));
+  if (st === 'TN') return 208; 
+  if (st === 'GJ') return gross >= 12000 ? 200 : 0;
+  if (st === 'AP' || st === 'TG') return gross > 20000 ? 200 : (gross > 15000 ? 150 : 0);
+  if (st === 'MP') return gross > 40000 ? 208 : (gross > 30000 ? 150 : 0);
+  if (st === 'OD') return gross > 40000 ? 200 : (gross > 25000 ? 150 : 0);
+  if (st === 'JH') return gross > 60000 ? 208 : (gross > 40000 ? 150 : 0);
+  if (st === 'AS') return gross > 25000 ? 208 : 0;
+  return 200; 
+};
+
+const getLWF = (st) => {
+  const lwfMatrix = MATRIX_COMPONENTS.find(c => c.id === 'lwf_ee');
+  if (lwfMatrix && lwfMatrix.states && lwfMatrix.states[st] === 'N') return 0;
+  if (st === 'KA') return 20;
+  if (st === 'MH') return 12;
+  if (st === 'WB') return 3;
+  if (st === 'TN') return 20;
+  if (st === 'GJ') return 6;
+  if (st === 'AP' || st === 'TG') return 30;
+  return 25; 
+};
+
 export default function SimulationsTab() {
   const [data, setData] = useState({
     // Step 1 Inputs
@@ -136,6 +164,31 @@ export default function SimulationsTab() {
     }
   });
 
+  // PRE-AGGREGATION for PASS 3 (Standard Gross & Basic)
+  let tempStandardBasic = 0;
+  let tempStandardGross = 0;
+  data.salaryComponents.forEach(c => {
+    if (c.type === 'earnings_basic') tempStandardBasic += c._resolvedAmount;
+    if (c.type === 'earnings_hra' || c.type === 'earnings_allowance') tempStandardGross += c._resolvedAmount;
+  });
+  tempStandardGross += tempStandardBasic;
+
+  // PASS 3: Hydrate Empty Statutory Components
+  data.salaryComponents.forEach(c => {
+    const isBlank = !c.amount || c.amount === 0 || c.amount === '';
+    if (isBlank) {
+       if (c.matrixId === 'epf_ee' || c.matrixId === 'epf_er') {
+           if (data.epfCalculationMethod === 'flat_ceiling') c._resolvedAmount = Math.min(1800, tempStandardBasic * 0.12);
+           else if (data.epfCalculationMethod === 'actual_basic') c._resolvedAmount = tempStandardBasic * 0.12;
+           else c._resolvedAmount = Math.min(1800, tempStandardBasic * 0.12);
+       }
+       else if (c.matrixId === 'esi_ee') c._resolvedAmount = tempStandardGross <= 21000 ? tempStandardGross * 0.0075 : 0;
+       else if (c.matrixId === 'esi_er') c._resolvedAmount = tempStandardGross <= 21000 ? tempStandardGross * 0.0325 : 0;
+       else if (c.matrixId === 'pt') c._resolvedAmount = getPT(data.selectedState, tempStandardGross);
+       else if (c.matrixId === 'lwf_ee') c._resolvedAmount = getLWF(data.selectedState);
+    }
+  });
+
   let manualEpfInput = 0;
   let manualPtInput = 0;
   let manualLwfInput = 0;
@@ -144,21 +197,30 @@ export default function SimulationsTab() {
   // Final Accumulation using resolved values
   data.salaryComponents.forEach(c => {
     const val = c._resolvedAmount;
+    const isBlank = !c.amount || c.amount === 0 || c.amount === '';
+
     if (c.type === 'earnings_basic') standardBasic += val;
     else if (c.type === 'earnings_hra') standardHRA += val;
     else if (c.type === 'earnings_allowance') standardSpecial += val;
     else if (c.type === 'reimbursement') monthlyReimbursements += val;
     else if (c.type === 'employer_contrib') {
-        employerContribs += val;
-        if (c.matrixId === 'epf_ee' || c.name.toLowerCase().includes('epf')) {
+        employerContribs += val; // Needs to exist for Total CTC rendering logic
+        if ((c.matrixId === 'epf_ee' || c.name.toLowerCase().includes('epf')) && !isBlank) {
              if (val > 0) manualEpfInput = val; 
         }
     }
     else if (c.type === 'employee_deduction') {
-        employeeDeductions += val;
-        if (c.matrixId === 'pt' && val > 0) manualPtInput = val;
-        if (c.matrixId === 'lwf_ee' && val > 0) manualLwfInput = val;
-        if (c.matrixId === 'esi_ee' && val > 0) manualEsiInput = val;
+        if (c.matrixId === 'pt') {
+             if (!isBlank && val > 0) manualPtInput = val;
+        } else if (c.matrixId === 'lwf_ee') {
+             if (!isBlank && val > 0) manualLwfInput = val;
+        } else if (c.matrixId === 'esi_ee') {
+             if (!isBlank && val > 0) manualEsiInput = val;
+        } else if (c.matrixId !== 'epf_ee') {
+             // Only add to employeeDeductions if it's NOT a mapped central statutory component 
+             // because central outputs are explicitly traced! Prevents Step 3 Double-Counting!
+             employeeDeductions += val;
+        }
     }
     else if (c.type === 'variable') {
       variableTarget += val;
@@ -278,50 +340,8 @@ export default function SimulationsTab() {
   const esiEmployer = grossSalary <= 21000 ? grossSalary * 0.0325 : 0;
   
   // Dynamic State Mathematics For PT and LWF
-  let pt = 0;
-  if (manualPtInput > 0) {
-    pt = manualPtInput;
-  } else {
-    // Check MATRIX to see if PT is strictly forbidden
-    const ptMatrix = MATRIX_COMPONENTS.find(c => c.id === 'pt');
-    if (ptMatrix && ptMatrix.states && ptMatrix.states[data.selectedState] === 'N') {
-      pt = 0;
-    } else {
-      // Dynamic Slabs based on grossSalary and State
-      const st = data.selectedState;
-      if (st === 'KA') pt = grossSalary >= 25000 ? 200 : 0;
-      else if (st === 'MH') pt = grossSalary >= 10000 ? 200 : (grossSalary >= 7500 ? 175 : 0); // Approx
-      else if (st === 'WB') pt = grossSalary > 40000 ? 200 : (grossSalary > 25000 ? 150 : (grossSalary > 15000 ? 130 : 0));
-      else if (st === 'TN') pt = 208; // 1250/6 half-yearly amortized
-      else if (st === 'GJ') pt = grossSalary >= 12000 ? 200 : 0;
-      else if (st === 'AP' || st === 'TG') pt = grossSalary > 20000 ? 200 : (grossSalary > 15000 ? 150 : 0);
-      else if (st === 'MP') pt = grossSalary > 40000 ? 208 : (grossSalary > 30000 ? 150 : 0);
-      else if (st === 'OD') pt = grossSalary > 40000 ? 200 : (grossSalary > 25000 ? 150 : 0);
-      else if (st === 'JH') pt = grossSalary > 60000 ? 208 : (grossSalary > 40000 ? 150 : 0);
-      else if (st === 'AS') pt = grossSalary > 25000 ? 208 : 0;
-      else pt = 200; // Generic fallback for other applicable
-    }
-  }
-
-  let lwf = 0;
-  if (manualLwfInput > 0) {
-    lwf = manualLwfInput;
-  } else {
-    // Check MATRIX to see if LWF is strictly forbidden
-    const lwfMatrix = MATRIX_COMPONENTS.find(c => c.id === 'lwf_ee');
-    if (lwfMatrix && lwfMatrix.states && lwfMatrix.states[data.selectedState] === 'N') {
-      lwf = 0;
-    } else {
-      const st = data.selectedState;
-      if (st === 'KA') lwf = 20;
-      else if (st === 'MH') lwf = 12; // 12 twice a year? Monthly averaged
-      else if (st === 'WB') lwf = 3;
-      else if (st === 'TN') lwf = 20;
-      else if (st === 'GJ') lwf = 6;
-      else if (st === 'AP' || st === 'TG') lwf = 30; // 30 per year
-      else lwf = 25; // Standard generic payload
-    }
-  }
+  const pt = manualPtInput > 0 ? manualPtInput : getPT(data.selectedState, grossSalary);
+  const lwf = manualLwfInput > 0 ? manualLwfInput : getLWF(data.selectedState);
   
   const totalDeductions = pfEmployee + esiEmployee + pt + lwf + tds + employeeDeductions;
   const netPay = grossSalary - totalDeductions;

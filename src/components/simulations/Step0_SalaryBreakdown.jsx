@@ -162,9 +162,9 @@ export default function Step0_SalaryBreakdown({ state }) {
                 <span style={{position: 'absolute', left: 12, top: 9, color: '#64748b', fontSize: 11, fontWeight: 700}}>ƒ(x)</span>
                 <input 
                   type="text" 
-                  value={comp.amount} 
+                  value={comp.amount === 0 ? '' : comp.amount} 
                   onChange={(e) => updateComponent(comp.id, 'amount', e.target.value)} 
-                  placeholder="Val or basic*0.4"
+                  placeholder={(!comp.amount && comp._resolvedAmount > 0) ? `Auto: ₹${Math.round(comp._resolvedAmount)}` : "Val or formula..."}
                   style={{padding: '8px 8px 8px 36px', borderRadius: 6, border: '1px solid #cbd5e1', fontSize: 13, width: '100%', boxSizing: 'border-box'}}
                 />
               </div>
