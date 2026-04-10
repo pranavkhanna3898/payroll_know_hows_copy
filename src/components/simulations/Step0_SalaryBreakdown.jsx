@@ -62,8 +62,8 @@ export default function Step0_SalaryBreakdown({ state }) {
     <div className="sim-card sim-card-blue">
       <div className="sim-card-header">
         <div style={{display: 'flex', flexDirection: 'column', gap: 16}}>
-          <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center'}}>
-            <div>
+          <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 16}}>
+            <div style={{flex: '1 1 300px'}}>
               <h3 style={{margin: 0}}>Step 0: Component Builder</h3>
               <p style={{margin: '4px 0 0 0', fontSize: 13, color: '#64748b'}}>Build the CTC structurally. Use exactly `basic * 0.40` for formulas.</p>
             </div>
