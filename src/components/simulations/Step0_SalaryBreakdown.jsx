@@ -122,6 +122,18 @@ export default function Step0_SalaryBreakdown({ state }) {
           ))}
         </div>
 
+        <div style={{display: 'flex', alignItems: 'center', gap: 12, marginBottom: 24, padding: '12px 16px', background: '#f8fafc', borderRadius: 8, border: '1px solid #e2e8f0'}}>
+          <label style={{fontWeight: 600, fontSize: 13, color: '#334155', minWidth: 200}}>Global EPF Calculation Basis:</label>
+          <select 
+            value={state.epfCalculationMethod || 'prorated_ceiling'} 
+            onChange={(e) => state.updateData('epfCalculationMethod', e.target.value)}
+            style={{padding: '8px 12px', borderRadius: 6, border: '1px solid #cbd5e1', fontSize: 13, background: 'white', flex: 1}}>
+            <option value="prorated_ceiling">Statutory Ceiling (12% of Basic, max 1,800/mo prorated by LOP)</option>
+            <option value="flat_ceiling">Flat Amount (Fixed at 1,800/mo regardless of LOP)</option>
+            <option value="actual_basic">Actual Basic (12% of Basic, Uncapped)</option>
+          </select>
+        </div>
+
         <div className="sim-output-box">
           <h4>Calculation: Standard Input CTC</h4>
           <div className="code-content" style={{background: 'transparent', padding: '0 0 10px', color: '#475569', fontSize: 12}}>

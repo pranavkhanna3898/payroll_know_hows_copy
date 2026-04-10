@@ -24,11 +24,12 @@ export default function SimulationsTab() {
     leaveEncashmentDays: 0,
     arrearEntries: [],
 
-    // Step 2 Inputs
     taxRegime: "new",
     investments80C: 0,
     medical80D: 0,
-    hraExempt: 0,
+    isMetro: true,
+    monthlyRentPaid: 0,
+    epfCalculationMethod: 'prorated_ceiling',
     tdsDeductedSoFar: 0,
     monthsRemaining: 1,
 
@@ -135,14 +136,31 @@ export default function SimulationsTab() {
   const grossSalary = basic + hra + special + overtimePay + arrearsPay + leaveEncashmentPay + variablePay;
 
   const annualGross = (standardGross * 11) + grossSalary; 
-  
+
+  const total80C = Math.min(150000, data.investments80C);
+  const taxableIncomeBaseOld = annualGross - total80C - data.medical80D - 50000;
   let taxableIncome = 0;
   let annualTax = 0;
   let taxFormulaDetail = "0";
 
+  let calculatedHraExempt = 0;
+  let hraFormulaString = "Not applicable (New Regime or no HRA)";
+  const projectedAnnualBasic = (standardBasic * 11) + basic;
+  const projectedAnnualHRA = (standardHRA * 11) + hra;
+  const annualRent = data.monthlyRentPaid * 12;
+
   if (data.taxRegime === 'old') {
-    const total80C = Math.min(150000, data.investments80C);
-    taxableIncome = Math.max(0, annualGross - total80C - data.medical80D - data.hraExempt - 50000); 
+    if (standardHRA > 0) {
+      const min1 = projectedAnnualHRA;
+      const min2 = Math.max(0, annualRent - (0.10 * projectedAnnualBasic));
+      const min3 = data.isMetro ? (0.50 * projectedAnnualBasic) : (0.40 * projectedAnnualBasic);
+      calculatedHraExempt = Math.min(min1, min2, min3);
+      hraFormulaString = `Min(Actual HRA: ${min1.toLocaleString()}, Rent-10%Basic: ${min2.toLocaleString()}, ${data.isMetro ? '50%' : '40%'}Basic: ${min3.toLocaleString()})`;
+    } else {
+      hraFormulaString = "No HRA component defined.";
+    }
+
+    taxableIncome = Math.max(0, taxableIncomeBaseOld - calculatedHraExempt); 
     
     if (taxableIncome > 1000000) {
       annualTax = 112500 + ((taxableIncome - 1000000) * 0.3);
@@ -193,7 +211,14 @@ export default function SimulationsTab() {
   const tds = data.monthsRemaining > 0 ? (remainingTax / data.monthsRemaining) : 0;
 
   // Deductions
-  const pfEmployee = Math.min(1800 * attendanceFactor, basic * 0.12);
+  let pfEmployee = 0;
+  if (data.epfCalculationMethod === 'flat_ceiling') {
+    pfEmployee = Math.min(1800, standardBasic * 0.12);
+  } else if (data.epfCalculationMethod === 'actual_basic') {
+    pfEmployee = basic * 0.12; 
+  } else {
+    pfEmployee = Math.min(1800 * attendanceFactor, basic * 0.12);
+  }
   const pfEmployer = pfEmployee; 
   const esiEmployee = grossSalary <= 21000 ? grossSalary * 0.0075 : 0;
   const esiEmployer = grossSalary <= 21000 ? grossSalary * 0.0325 : 0;
@@ -210,7 +235,8 @@ export default function SimulationsTab() {
     basic, hra, special, overtimePay, arrearsPay, leaveEncashmentPay, grossSalary, attendanceFactor,
     taxableIncome, annualTax, tds,
     pfEmployee, pfEmployer, esiEmployee, esiEmployer, pt, lwf,
-    totalDeductions, netPay, taxFormulaDetail, totalMonthlyCTC, standardGross
+    totalDeductions, netPay, taxFormulaDetail, totalMonthlyCTC, standardGross,
+    calculatedHraExempt, hraFormulaString
   };
 
   return (
