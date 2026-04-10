@@ -84,6 +84,16 @@ export default function Step0_SalaryBreakdown({ state }) {
                   style={{padding: '4px 8px', border: '1px solid #cbd5e1', borderRadius: 4, fontSize: 12, outline: 'none', width: 100}}
                 />
               </div>
+              <div style={{display: 'flex', gap: 8, alignItems: 'center', background: '#f1f5f9', padding: '6px 12px', borderRadius: 6}}>
+                <label style={{fontSize: 12, fontWeight: 600, color: '#475569'}}>Reims Tax Rule:</label>
+                <select 
+                  value={state.reimbursementTaxStrategy} 
+                  onChange={(e) => state.updateData('reimbursementTaxStrategy', e.target.value)}
+                  style={{padding: '4px 8px', border: '1px solid #cbd5e1', borderRadius: 4, fontSize: 12, outline: 'none'}}>
+                  <option value="year_end">Wait for Year-End (Exempt)</option>
+                  <option value="monthly">Tax Monthly (Standard)</option>
+                </select>
+              </div>
               <input 
                 type="file" 
                 accept=".xlsx, .xls, .csv" 

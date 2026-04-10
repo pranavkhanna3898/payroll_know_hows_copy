@@ -37,6 +37,81 @@ const getLWF = (st) => {
   return 25; 
 };
 
+const evaluateTaxLiability = (
+  annualGross, 
+  taxRegime, 
+  investments80C, 
+  medical80D, 
+  isMetro, 
+  standardHRA, 
+  projectedAnnualBasic, 
+  projectedAnnualHRA, 
+  annualRent
+) => {
+  const total80C = Math.min(150000, investments80C);
+  const taxableIncomeBaseOld = annualGross - total80C - medical80D - 50000;
+  let taxableIncome = 0;
+  let annualTax = 0;
+  let taxFormulaDetail = "0";
+  let calculatedHraExempt = 0;
+  let hraFormulaString = "Not applicable (New Regime or no HRA)";
+
+  if (taxRegime === 'old') {
+    if (standardHRA > 0) {
+      const min1 = projectedAnnualHRA;
+      const min2 = Math.max(0, annualRent - (0.10 * projectedAnnualBasic));
+      const min3 = isMetro ? (0.50 * projectedAnnualBasic) : (0.40 * projectedAnnualBasic);
+      calculatedHraExempt = Math.min(min1, min2, min3);
+      hraFormulaString = `Min(Actual HRA: ${min1.toLocaleString()}, Rent-10%Basic: ${min2.toLocaleString()}, ${isMetro ? '50%' : '40%'}Basic: ${min3.toLocaleString()})`;
+    }
+
+    taxableIncome = Math.max(0, taxableIncomeBaseOld - calculatedHraExempt); 
+    
+    if (taxableIncome > 1000000) {
+      annualTax = 112500 + ((taxableIncome - 1000000) * 0.3);
+      taxFormulaDetail = `112k + ((${taxableIncome} - 10L) * 30%) = ${annualTax}`;
+    } else if (taxableIncome > 500000) {
+      annualTax = 12500 + ((taxableIncome - 500000) * 0.2);
+      taxFormulaDetail = `12.5k + ((${taxableIncome} - 5L) * 20%) = ${annualTax}`;
+    } else if (taxableIncome > 250000) {
+      annualTax = (taxableIncome - 250000) * 0.05;
+      taxFormulaDetail = `(${taxableIncome} - 2.5L) * 5% = ${annualTax}`;
+      if (taxableIncome <= 500000) {
+         annualTax = 0; 
+         taxFormulaDetail = `${taxFormulaDetail} -> Old Rebate u/s 87A -> 0`;
+      }
+    }
+  } else {
+    taxableIncome = Math.max(0, annualGross - 75000); 
+    if (taxableIncome > 2400000) {
+      annualTax = 460000 + ((taxableIncome - 2400000) * 0.3);
+      taxFormulaDetail = `4.6L + ((${taxableIncome} - 24L) * 30%) = ${annualTax}`;
+    } else if (taxableIncome > 2000000) {
+      annualTax = 360000 + ((taxableIncome - 2000000) * 0.25);
+      taxFormulaDetail = `3.6L + ((${taxableIncome} - 20L) * 25%) = ${annualTax}`;
+    } else if (taxableIncome > 1600000) {
+      annualTax = 280000 + ((taxableIncome - 1600000) * 0.2);
+      taxFormulaDetail = `2.8L + ((${taxableIncome} - 16L) * 20%) = ${annualTax}`;
+    } else if (taxableIncome > 1200000) {
+      annualTax = 220000 + ((taxableIncome - 1200000) * 0.15);
+      taxFormulaDetail = `2.2L + ((${taxableIncome} - 12L) * 15%) = ${annualTax}`;
+    } else if (taxableIncome > 800000) {
+      annualTax = 180000 + ((taxableIncome - 800000) * 0.1);
+      taxFormulaDetail = `1.8L + ((${taxableIncome} - 8L) * 10%) = ${annualTax}`;
+    } else if (taxableIncome > 400000) {
+      annualTax = (taxableIncome - 400000) * 0.05;
+      taxFormulaDetail = `(${taxableIncome} - 4L) * 5% = ${annualTax}`;
+    }
+    
+    if (taxableIncome <= 1200000) {
+      annualTax = 0;
+      taxFormulaDetail = `${taxFormulaDetail} -> New Rebate u/s 87A (Up to 12L) -> 0`;
+    }
+  }
+
+  return { taxableIncome, annualTax, taxFormulaDetail, calculatedHraExempt, hraFormulaString };
+};
+
 export default function SimulationsTab() {
   const [data, setData] = useState({
     // Step 1 Inputs
@@ -57,6 +132,7 @@ export default function SimulationsTab() {
 
     selectedState: 'KA',
     selectedCity: '',
+    reimbursementTaxStrategy: 'year_end',
 
     taxRegime: "new",
     investments80C: 0,
@@ -228,8 +304,8 @@ export default function SimulationsTab() {
     }
   });
 
-  const standardGross = standardBasic + standardHRA + standardSpecial;
-  const totalMonthlyCTC = standardGross + monthlyReimbursements + employerContribs + variableTarget;
+  const standardGross = standardBasic + standardHRA + standardSpecial + (data.reimbursementTaxStrategy === 'monthly' ? monthlyReimbursements : 0);
+  const totalMonthlyCTC = standardGross + (data.reimbursementTaxStrategy === 'year_end' ? monthlyReimbursements : 0) + employerContribs + variableTarget;
 
   const attendanceFactor = Math.max(0, (data.daysInMonth - data.lopDays) / data.daysInMonth);
   const basic = standardBasic * attendanceFactor;
@@ -244,82 +320,26 @@ export default function SimulationsTab() {
     arrearsPay += (baseToUse / entry.monthDays) * entry.arrearDays;
   });
   
-  const grossSalary = basic + hra + special + overtimePay + arrearsPay + leaveEncashmentPay + variablePay;
+  const grossSalary = basic + hra + special + overtimePay + arrearsPay + leaveEncashmentPay + variablePay + (data.reimbursementTaxStrategy === 'monthly' ? (monthlyReimbursements * attendanceFactor) : 0);
 
   const annualGross = (standardGross * 11) + grossSalary; 
-
-  const total80C = Math.min(150000, data.investments80C);
-  const taxableIncomeBaseOld = annualGross - total80C - data.medical80D - 50000;
-  let taxableIncome = 0;
-  let annualTax = 0;
-  let taxFormulaDetail = "0";
-
-  let calculatedHraExempt = 0;
-  let hraFormulaString = "Not applicable (New Regime or no HRA)";
+  const annualRent = data.monthlyRentPaid * 12;
   const projectedAnnualBasic = (standardBasic * 11) + basic;
   const projectedAnnualHRA = (standardHRA * 11) + hra;
-  const annualRent = data.monthlyRentPaid * 12;
 
-  if (data.taxRegime === 'old') {
-    if (standardHRA > 0) {
-      const min1 = projectedAnnualHRA;
-      const min2 = Math.max(0, annualRent - (0.10 * projectedAnnualBasic));
-      const min3 = data.isMetro ? (0.50 * projectedAnnualBasic) : (0.40 * projectedAnnualBasic);
-      calculatedHraExempt = Math.min(min1, min2, min3);
-      hraFormulaString = `Min(Actual HRA: ${min1.toLocaleString()}, Rent-10%Basic: ${min2.toLocaleString()}, ${data.isMetro ? '50%' : '40%'}Basic: ${min3.toLocaleString()})`;
-    } else {
-      hraFormulaString = "No HRA component defined.";
-    }
+  const runRateTax = evaluateTaxLiability(annualGross, data.taxRegime, data.investments80C, data.medical80D, data.isMetro, standardHRA, projectedAnnualBasic, projectedAnnualHRA, annualRent);
+  const taxableIncome = runRateTax.taxableIncome;
+  const annualTax = runRateTax.annualTax;
+  const taxFormulaDetail = runRateTax.taxFormulaDetail;
+  const calculatedHraExempt = runRateTax.calculatedHraExempt;
+  const hraFormulaString = runRateTax.hraFormulaString;
 
-    taxableIncome = Math.max(0, taxableIncomeBaseOld - calculatedHraExempt); 
-    
-    if (taxableIncome > 1000000) {
-      annualTax = 112500 + ((taxableIncome - 1000000) * 0.3);
-      taxFormulaDetail = `112k + ((${taxableIncome} - 10L) * 30%) = ${annualTax}`;
-    } else if (taxableIncome > 500000) {
-      annualTax = 12500 + ((taxableIncome - 500000) * 0.2);
-      taxFormulaDetail = `12.5k + ((${taxableIncome} - 5L) * 20%) = ${annualTax}`;
-    } else if (taxableIncome > 250000) {
-      annualTax = (taxableIncome - 250000) * 0.05;
-      taxFormulaDetail = `(${taxableIncome} - 2.5L) * 5% = ${annualTax}`;
-      if (taxableIncome <= 500000) {
-         annualTax = 0; 
-         taxFormulaDetail = `${taxFormulaDetail} -> Old Rebate u/s 87A -> 0`;
-      }
-    }
-  } else {
-    // New Tax Regime (FY 2026-27 default)
-    taxableIncome = Math.max(0, annualGross - 75000); // 75k standard deduction
-    
-    // FY 2026-27 Slabs
-    if (taxableIncome > 2400000) {
-      annualTax = 460000 + ((taxableIncome - 2400000) * 0.3);
-      taxFormulaDetail = `4.6L + ((${taxableIncome} - 24L) * 30%) = ${annualTax}`;
-    } else if (taxableIncome > 2000000) {
-      annualTax = 360000 + ((taxableIncome - 2000000) * 0.25);
-      taxFormulaDetail = `3.6L + ((${taxableIncome} - 20L) * 25%) = ${annualTax}`;
-    } else if (taxableIncome > 1600000) {
-      annualTax = 280000 + ((taxableIncome - 1600000) * 0.2);
-      taxFormulaDetail = `2.8L + ((${taxableIncome} - 16L) * 20%) = ${annualTax}`;
-    } else if (taxableIncome > 1200000) {
-      annualTax = 220000 + ((taxableIncome - 1200000) * 0.15);
-      taxFormulaDetail = `2.2L + ((${taxableIncome} - 12L) * 15%) = ${annualTax}`;
-    } else if (taxableIncome > 800000) {
-      annualTax = 180000 + ((taxableIncome - 800000) * 0.1);
-      taxFormulaDetail = `1.8L + ((${taxableIncome} - 8L) * 10%) = ${annualTax}`;
-    } else if (taxableIncome > 400000) {
-      annualTax = (taxableIncome - 400000) * 0.05;
-      taxFormulaDetail = `(${taxableIncome} - 4L) * 5% = ${annualTax}`;
-    }
-    
-    if (taxableIncome <= 1200000) {
-      annualTax = 0;
-      taxFormulaDetail = `${taxFormulaDetail} -> New Rebate u/s 87A (Up to 12L) -> 0`;
-    }
-  }
-  
   const remainingTax = Math.max(0, annualTax - data.tdsDeductedSoFar);
   const tds = data.monthsRemaining > 0 ? (remainingTax / data.monthsRemaining) : 0;
+
+  // Project Liability for Analytics Dashboard
+  const projectedAnnualGross = annualGross + (data.reimbursementTaxStrategy === 'year_end' ? (monthlyReimbursements * 12) : 0);
+  const projectedTaxObj = evaluateTaxLiability(projectedAnnualGross, data.taxRegime, data.investments80C, data.medical80D, data.isMetro, standardHRA, projectedAnnualBasic, projectedAnnualHRA, annualRent);
 
   // Deductions
   let pfEmployee = 0;
@@ -344,7 +364,7 @@ export default function SimulationsTab() {
   const lwf = manualLwfInput > 0 ? manualLwfInput : getLWF(data.selectedState);
   
   const totalDeductions = pfEmployee + esiEmployee + pt + lwf + tds + employeeDeductions;
-  const netPay = grossSalary - totalDeductions;
+  const netPay = grossSalary - totalDeductions + (data.reimbursementTaxStrategy === 'year_end' ? monthlyReimbursements : 0);
 
   const simState = {
     ...data,
@@ -354,7 +374,8 @@ export default function SimulationsTab() {
     taxableIncome, annualTax, tds,
     pfEmployee, pfEmployer, esiEmployee, esiEmployer, pt, lwf,
     totalDeductions, netPay, taxFormulaDetail, totalMonthlyCTC, standardGross,
-    calculatedHraExempt, hraFormulaString
+    calculatedHraExempt, hraFormulaString,
+    projectedTaxObj
   };
 
   return (
@@ -378,6 +399,61 @@ export default function SimulationsTab() {
         <div className="pipeline-row">
           <Step4_BankFile state={simState} />
           <Step5_Statutory state={simState} />
+        </div>
+
+        {/* Step 6 Analytics Dashboard */}
+        <div className="sim-card sim-card-mixed" style={{marginTop: 32}}>
+          <div className="sim-card-header" style={{background: '#f8fafc', padding: 20, borderBottom: '1px solid #cbd5e1'}}>
+            <h3 style={{margin: 0, display: 'flex', alignItems: 'center', gap: 8}}>
+              <span style={{fontSize: 18}}>📊</span> Tax Liability Projections (Actual vs Potential)
+            </h3>
+            <p style={{margin: '6px 0 0 0', fontSize: 13, color: '#64748b'}}>
+              Visualizing your current Run-Rate Tax alongside your catastrophic projected liability if Year-End claims are forfeited.
+            </p>
+          </div>
+          <div className="sim-card-body" style={{padding: 24}}>
+            <div style={{display: 'flex', gap: 24, flexWrap: 'wrap'}}>
+              
+              {/* Current Run Rate */}
+              <div style={{flex: '1 1 300px', background: 'white', borderRadius: 8, padding: 20, border: '1px solid #e2e8f0', boxShadow: '0 1px 3px rgba(0,0,0,0.05)'}}>
+                <div style={{fontSize: 12, fontWeight: 700, color: '#10b981', textTransform: 'uppercase', letterSpacing: 0.5}}>Active Standard Liability</div>
+                <div style={{fontSize: 28, fontWeight: 800, color: '#0f172a', margin: '8px 0'}}>₹{Math.round(annualTax).toLocaleString()}</div>
+                <div style={{fontSize: 13, color: '#64748b'}}>
+                  Current Tax tracking assumes you are <strong>successfully submitting</strong> ₹{Math.round(monthlyReimbursements*12).toLocaleString()} in mapped bills by March.
+                </div>
+                <div style={{marginTop: 16, paddingTop: 16, borderTop: '1px dashed #cbd5e1'}}>
+                  <div style={{display: 'flex', justifyContent: 'space-between', fontSize: 13, marginBottom: 8}}>
+                    <span style={{color: '#64748b'}}>Tracked Taxable Income:</span>
+                    <strong style={{color: '#334155'}}>₹{Math.round(taxableIncome).toLocaleString()}</strong>
+                  </div>
+                  <div style={{display: 'flex', justifyContent: 'space-between', fontSize: 13}}>
+                    <span style={{color: '#64748b'}}>Monthly TDS deduction:</span>
+                    <strong style={{color: '#334155'}}>₹{Math.round(tds).toLocaleString()}</strong>
+                  </div>
+                </div>
+              </div>
+
+              {/* Projected Unclaimed Delta */}
+              <div style={{flex: '1 1 300px', background: '#fff1f2', borderRadius: 8, padding: 20, border: '1px solid #fecdd3', boxShadow: '0 1px 3px rgba(0,0,0,0.05)'}}>
+                <div style={{fontSize: 12, fontWeight: 700, color: '#e11d48', textTransform: 'uppercase', letterSpacing: 0.5}}>Potential Year-End Liability</div>
+                <div style={{fontSize: 28, fontWeight: 800, color: '#9f1239', margin: '8px 0'}}>₹{Math.round(projectedTaxObj.annualTax).toLocaleString()}</div>
+                <div style={{fontSize: 13, color: '#e11d48'}}>
+                  Projected Tax assumes a <strong>complete forfeit</strong> of ₹{Math.round(monthlyReimbursements*12).toLocaleString()} in claims by March, switching status to fully taxable.
+                </div>
+                <div style={{marginTop: 16, paddingTop: 16, borderTop: '1px dashed #fda4af'}}>
+                  <div style={{display: 'flex', justifyContent: 'space-between', fontSize: 13, marginBottom: 8}}>
+                    <span style={{color: '#9f1239'}}>Unclaimed Taxable Income:</span>
+                    <strong style={{color: '#881337'}}>₹{Math.round(projectedTaxObj.taxableIncome).toLocaleString()}</strong>
+                  </div>
+                  <div style={{display: 'flex', justifyContent: 'space-between', fontSize: 13, color: '#ef4444', fontWeight: 600}}>
+                    <span>Sudden Arrear Hit (March):</span>
+                    <span>₹{Math.round(projectedTaxObj.annualTax - annualTax).toLocaleString()}</span>
+                  </div>
+                </div>
+              </div>
+
+            </div>
+          </div>
         </div>
       </div>
     </div>
