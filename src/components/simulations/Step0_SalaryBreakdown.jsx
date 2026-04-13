@@ -46,8 +46,8 @@ export default function Step0_SalaryBreakdown({ state }) {
   /** Computed counterpart shown as read-only: annual ↔ monthly */
   const derivedAmount = (comp) => {
     const val = typeof comp.amount === 'number' ? comp.amount : Number(comp.amount) || 0;
-    if (isAnnual) return val === 0 ? '' : (val / 12).toFixed(2);   // annual entered → show monthly
-    return val === 0 ? '' : (val * 12).toFixed(0);                 // monthly entered → show annual
+    if (isAnnual) return val === 0 ? '' : Math.round(val / 12).toLocaleString();   // annual entered → show monthly
+    return val === 0 ? '' : Math.round(val * 12).toLocaleString();                  // monthly entered → show annual
   };
 
   /* ── Excel upload ────────────────────────────────────── */
@@ -374,15 +374,15 @@ export default function Step0_SalaryBreakdown({ state }) {
           </div>
           <div className="sim-line-item">
             <span>Standard Gross Base:</span>
-            <span>₹ {standardGross.toLocaleString(undefined, { maximumFractionDigits: 2 })}/mo</span>
+            <span>₹ {Math.round(standardGross).toLocaleString()}/mo</span>
           </div>
           <div className="sim-line-item">
             <span>Reimbursements + Employer Contribs:</span>
-            <span>+ ₹ {(monthlyReimbursements + employerContribs).toLocaleString(undefined, { maximumFractionDigits: 2 })}/mo</span>
+            <span>+ ₹ {Math.round(monthlyReimbursements + employerContribs).toLocaleString()}/mo</span>
           </div>
           <div className="sim-line-item sim-total" style={{ margin: '8px 0' }}>
             <span>Total Monthly CTC:</span>
-            <span>₹ {totalMonthlyCTC.toLocaleString(undefined, { maximumFractionDigits: 2 })}</span>
+            <span>₹ {Math.round(totalMonthlyCTC).toLocaleString()}</span>
           </div>
           <div className="sim-line-item">
             <span>Implied Annual CTC (×12):</span>

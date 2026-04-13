@@ -67,45 +67,54 @@ const evaluateTaxLiability = (
 
     taxableIncome = Math.max(0, taxableIncomeBaseOld - calculatedHraExempt); 
     
+    let baseTax = 0;
     if (taxableIncome > 1000000) {
-      annualTax = 112500 + ((taxableIncome - 1000000) * 0.3);
-      taxFormulaDetail = `112k + ((${taxableIncome} - 10L) * 30%) = ${annualTax}`;
+      baseTax = 112500 + ((taxableIncome - 1000000) * 0.3);
+      taxFormulaDetail = `112,500 + ((${Math.round(taxableIncome).toLocaleString()} - 10L) * 30%)`;
     } else if (taxableIncome > 500000) {
-      annualTax = 12500 + ((taxableIncome - 500000) * 0.2);
-      taxFormulaDetail = `12.5k + ((${taxableIncome} - 5L) * 20%) = ${annualTax}`;
+      baseTax = 12500 + ((taxableIncome - 500000) * 0.2);
+      taxFormulaDetail = `12,500 + ((${Math.round(taxableIncome).toLocaleString()} - 5L) * 20%)`;
     } else if (taxableIncome > 250000) {
-      annualTax = (taxableIncome - 250000) * 0.05;
-      taxFormulaDetail = `(${taxableIncome} - 2.5L) * 5% = ${annualTax}`;
-      if (taxableIncome <= 500000) {
-         annualTax = 0; 
-         taxFormulaDetail = `${taxFormulaDetail} -> Old Rebate u/s 87A -> 0`;
-      }
+      baseTax = (taxableIncome - 250000) * 0.05;
+      taxFormulaDetail = `(${Math.round(taxableIncome).toLocaleString()} - 2.5L) * 5%`;
+    }
+
+    if (taxableIncome <= 500000) {
+      annualTax = 0;
+      taxFormulaDetail = `${taxFormulaDetail || '0'} -> Rebate u/s 87A -> ₹0`;
+    } else {
+      annualTax = baseTax * 1.04;
+      taxFormulaDetail = `${taxFormulaDetail} = ₹${Math.round(baseTax).toLocaleString()} + 4% Cess`;
     }
   } else {
     taxableIncome = Math.max(0, annualGross - 75000); 
+    let baseTax = 0;
     if (taxableIncome > 2400000) {
-      annualTax = 460000 + ((taxableIncome - 2400000) * 0.3);
-      taxFormulaDetail = `4.6L + ((${taxableIncome} - 24L) * 30%) = ${annualTax}`;
+      baseTax = 300000 + ((taxableIncome - 2400000) * 0.3);
+      taxFormulaDetail = `3L + ((${Math.round(taxableIncome).toLocaleString()} - 24L) * 30%)`;
     } else if (taxableIncome > 2000000) {
-      annualTax = 360000 + ((taxableIncome - 2000000) * 0.25);
-      taxFormulaDetail = `3.6L + ((${taxableIncome} - 20L) * 25%) = ${annualTax}`;
+      baseTax = 200000 + ((taxableIncome - 2000000) * 0.25);
+      taxFormulaDetail = `2L + ((${Math.round(taxableIncome).toLocaleString()} - 20L) * 25%)`;
     } else if (taxableIncome > 1600000) {
-      annualTax = 280000 + ((taxableIncome - 1600000) * 0.2);
-      taxFormulaDetail = `2.8L + ((${taxableIncome} - 16L) * 20%) = ${annualTax}`;
+      baseTax = 120000 + ((taxableIncome - 1600000) * 0.2);
+      taxFormulaDetail = `1.2L + ((${Math.round(taxableIncome).toLocaleString()} - 16L) * 20%)`;
     } else if (taxableIncome > 1200000) {
-      annualTax = 220000 + ((taxableIncome - 1200000) * 0.15);
-      taxFormulaDetail = `2.2L + ((${taxableIncome} - 12L) * 15%) = ${annualTax}`;
+      baseTax = 60000 + ((taxableIncome - 1200000) * 0.15);
+      taxFormulaDetail = `60k + ((${Math.round(taxableIncome).toLocaleString()} - 12L) * 15%)`;
     } else if (taxableIncome > 800000) {
-      annualTax = 180000 + ((taxableIncome - 800000) * 0.1);
-      taxFormulaDetail = `1.8L + ((${taxableIncome} - 8L) * 10%) = ${annualTax}`;
+      baseTax = 20000 + ((taxableIncome - 800000) * 0.1);
+      taxFormulaDetail = `20k + ((${Math.round(taxableIncome).toLocaleString()} - 8L) * 10%)`;
     } else if (taxableIncome > 400000) {
-      annualTax = (taxableIncome - 400000) * 0.05;
-      taxFormulaDetail = `(${taxableIncome} - 4L) * 5% = ${annualTax}`;
+      baseTax = (taxableIncome - 400000) * 0.05;
+      taxFormulaDetail = `(${Math.round(taxableIncome).toLocaleString()} - 4L) * 5%`;
     }
     
     if (taxableIncome <= 1200000) {
       annualTax = 0;
-      taxFormulaDetail = `${taxFormulaDetail} -> New Rebate u/s 87A (Up to 12L) -> 0`;
+      taxFormulaDetail = `${taxFormulaDetail || '0'} -> Rebate u/s 87A -> ₹0`;
+    } else {
+      annualTax = baseTax * 1.04;
+      taxFormulaDetail = `${taxFormulaDetail} = ₹${Math.round(baseTax).toLocaleString()} + 4% Cess`;
     }
   }
 

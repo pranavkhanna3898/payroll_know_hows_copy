@@ -135,9 +135,9 @@ export default function Step1_Salary({ state }) {
           <div style={{ background: '#f8fafc', borderRadius: 6, padding: '10px 14px', marginBottom: 10, fontSize: 12 }}>
             <div style={{ fontWeight: 700, color: '#475569', marginBottom: 6 }}>② Prorated Fixed Earnings</div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 4, fontFamily: 'monospace', color: '#64748b' }}>
-              <div>Basic : ₹{standardBasic.toLocaleString()} × {attendanceFactor.toFixed(4)} = <strong style={{color:'#0f172a'}}>₹{basic.toLocaleString(undefined,{maximumFractionDigits:2})}</strong></div>
-              <div>HRA   : ₹{standardHRA.toLocaleString()} × {attendanceFactor.toFixed(4)} = <strong style={{color:'#0f172a'}}>₹{hra.toLocaleString(undefined,{maximumFractionDigits:2})}</strong></div>
-              <div>Allow : ₹{standardSpecial.toLocaleString()} × {attendanceFactor.toFixed(4)} = <strong style={{color:'#0f172a'}}>₹{special.toLocaleString(undefined,{maximumFractionDigits:2})}</strong></div>
+              <div>Basic : ₹{standardBasic.toLocaleString()} × {attendanceFactor.toFixed(4)} = <strong style={{color:'#0f172a'}}>₹{Math.round(basic).toLocaleString()}</strong></div>
+              <div>HRA   : ₹{standardHRA.toLocaleString()} × {attendanceFactor.toFixed(4)} = <strong style={{color:'#0f172a'}}>₹{Math.round(hra).toLocaleString()}</strong></div>
+              <div>Allow : ₹{standardSpecial.toLocaleString()} × {attendanceFactor.toFixed(4)} = <strong style={{color:'#0f172a'}}>₹{Math.round(special).toLocaleString()}</strong></div>
             </div>
           </div>
 
@@ -146,11 +146,11 @@ export default function Step1_Salary({ state }) {
             <div style={{ background: '#f0fdf4', borderRadius: 6, padding: '10px 14px', marginBottom: 10, fontSize: 12 }}>
               <div style={{ fontWeight: 700, color: '#475569', marginBottom: 6 }}>③ Additional Components</div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 4, fontFamily: 'monospace', color: '#64748b' }}>
-                {overtimePay > 0 && <div>Overtime : {overtimeHours} hrs × ₹{otRate}/hr = <strong style={{color:'#15803d'}}>₹{overtimePay.toLocaleString(undefined,{maximumFractionDigits:2})}</strong></div>}
-                {leaveEncashmentPay > 0 && <div>Encashment : (₹{standardGross.toLocaleString()} ÷ 26) × {leaveEncashmentDays} days = <strong style={{color:'#15803d'}}>₹{leaveEncashmentPay.toLocaleString(undefined,{maximumFractionDigits:2})}</strong></div>}
-                {variablePay > 0 && <div>Variable ({variableComps.length} payout{variableComps.length > 1 ? 's' : ''}) : <strong style={{color:'#15803d'}}>₹{variablePay.toLocaleString(undefined,{maximumFractionDigits:2})}</strong></div>}
-                {arrearsPay > 0 && <div>Arrears (historical prorated) : <strong style={{color:'#15803d'}}>₹{arrearsPay.toLocaleString(undefined,{maximumFractionDigits:2})}</strong></div>}
-                {reimbursementTaxStrategy === 'monthly' && monthlyReimbursements > 0 && <div>Reimbursements (taxed monthly) : <strong style={{color:'#15803d'}}>₹{(monthlyReimbursements * attendanceFactor).toLocaleString(undefined,{maximumFractionDigits:2})}</strong></div>}
+                {overtimePay > 0 && <div>Overtime : {overtimeHours} hrs × ₹{otRate}/hr = <strong style={{color:'#15803d'}}>₹{Math.round(overtimePay).toLocaleString()}</strong></div>}
+                {leaveEncashmentPay > 0 && <div>Encashment : (₹{standardGross.toLocaleString()} ÷ 26) × {leaveEncashmentDays} days = <strong style={{color:'#15803d'}}>₹{Math.round(leaveEncashmentPay).toLocaleString()}</strong></div>}
+                {variablePay > 0 && <div>Variable ({variableComps.length} payout{variableComps.length > 1 ? 's' : ''}) : <strong style={{color:'#15803d'}}>₹{Math.round(variablePay).toLocaleString()}</strong></div>}
+                {arrearsPay > 0 && <div>Arrears (historical prorated) : <strong style={{color:'#15803d'}}>₹{Math.round(arrearsPay).toLocaleString()}</strong></div>}
+                {reimbursementTaxStrategy === 'monthly' && monthlyReimbursements > 0 && <div>Reimbursements (taxed monthly) : <strong style={{color:'#15803d'}}>₹{Math.round(monthlyReimbursements * attendanceFactor).toLocaleString()}</strong></div>}
               </div>
             </div>
           )}
@@ -159,16 +159,16 @@ export default function Step1_Salary({ state }) {
           <div style={{ background: '#1e293b', borderRadius: 6, padding: '12px 14px', fontSize: 13 }}>
             <div style={{ fontWeight: 700, color: '#94a3b8', marginBottom: 4 }}>④ Gross Salary = Σ All Prorated Components</div>
             <div style={{ fontFamily: 'monospace', color: '#7dd3fc', fontSize: 11, lineHeight: 1.8 }}>
-              ₹{basic.toFixed(2)} (Basic)
-              + ₹{hra.toFixed(2)} (HRA)
-              + ₹{special.toFixed(2)} (Allow)
-              {overtimePay > 0 && ` + ₹${overtimePay.toFixed(2)} (OT)`}
-              {leaveEncashmentPay > 0 && ` + ₹${leaveEncashmentPay.toFixed(2)} (LE)`}
-              {variablePay > 0 && ` + ₹${variablePay.toFixed(2)} (Var)`}
-              {arrearsPay > 0 && ` + ₹${arrearsPay.toFixed(2)} (Arr)`}
+              ₹{Math.round(basic).toLocaleString()} (Basic)
+              + ₹{Math.round(hra).toLocaleString()} (HRA)
+              + ₹{Math.round(special).toLocaleString()} (Allow)
+              {overtimePay > 0 && ` + ₹${Math.round(overtimePay).toLocaleString()} (OT)`}
+              {leaveEncashmentPay > 0 && ` + ₹${Math.round(leaveEncashmentPay).toLocaleString()} (LE)`}
+              {variablePay > 0 && ` + ₹${Math.round(variablePay).toLocaleString()} (Var)`}
+              {arrearsPay > 0 && ` + ₹${Math.round(arrearsPay).toLocaleString()} (Arr)`}
             </div>
             <div style={{ fontSize: 20, fontWeight: 800, color: '#fff', marginTop: 8 }}>
-              = ₹ {grossSalary.toLocaleString(undefined, {maximumFractionDigits: 2})}
+              = ₹ {Math.round(grossSalary).toLocaleString()}
             </div>
           </div>
         </div>
