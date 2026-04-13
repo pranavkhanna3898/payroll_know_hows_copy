@@ -116,12 +116,12 @@ export default function SimulationsTab() {
   const [data, setData] = useState({
     // Step 1 Inputs
     salaryComponents: [
-      { id: '1', name: 'Basic', type: 'earnings_basic', amount: 25000, currentPayout: 0 },
-      { id: '2', name: 'HRA', type: 'earnings_hra', amount: 10000, currentPayout: 0 },
-      { id: '3', name: 'Special Allowance', type: 'earnings_allowance', amount: 15000, currentPayout: 0 },
-      { id: '4', name: 'Reimbursements', type: 'reimbursement', amount: 0, currentPayout: 0 },
-      { id: '5', name: 'Employer PF Contribution', type: 'employer_contrib', amount: 1800, currentPayout: 0 },
-      { id: '6', name: 'Employer ESI Contribution', type: 'employer_contrib', amount: 0, currentPayout: 0 }
+      { id: '1', name: 'Basic', type: 'earnings_basic', amount: 25000, currentPayout: 0, taxSchedule: 'monthly' },
+      { id: '2', name: 'HRA', type: 'earnings_hra', amount: 10000, currentPayout: 0, taxSchedule: 'monthly' },
+      { id: '3', name: 'Special Allowance', type: 'earnings_allowance', amount: 15000, currentPayout: 0, taxSchedule: 'monthly' },
+      { id: '4', name: 'Reimbursements', type: 'reimbursement', amount: 0, currentPayout: 0, taxSchedule: 'year_end' },
+      { id: '5', name: 'Employer PF Contribution', type: 'employer_contrib', amount: 1800, currentPayout: 0, taxSchedule: 'monthly' },
+      { id: '6', name: 'Employer ESI Contribution', type: 'employer_contrib', amount: 0, currentPayout: 0, taxSchedule: 'monthly' }
     ],
     daysInMonth: 30,
     lopDays: 0,
@@ -133,6 +133,7 @@ export default function SimulationsTab() {
     selectedState: 'KA',
     selectedCity: '',
     reimbursementTaxStrategy: 'year_end',
+    inputMode: 'monthly',  // 'monthly' | 'annual'
 
     taxRegime: "new",
     investments80C: 0,
@@ -169,7 +170,7 @@ export default function SimulationsTab() {
       ...prev,
       salaryComponents: [
         ...prev.salaryComponents,
-        { id: Date.now().toString(), name: 'New Component', type: 'earnings_allowance', amount: 0, currentPayout: 0 }
+        { id: Date.now().toString(), name: 'New Component', type: 'earnings_allowance', amount: 0, currentPayout: 0, taxSchedule: 'monthly' }
       ]
     }));
   };
@@ -214,12 +215,13 @@ export default function SimulationsTab() {
   let variableTarget = 0;
   let variablePay = 0;
 
-  // PASS 1: Calculate absolute numeric components
+  // PASS 1: Calculate absolute numeric components (normalise annual→monthly if needed)
   data.salaryComponents.forEach(c => {
     let val = 0;
     if (typeof c.amount === 'number') val = c.amount;
     else if (c.amount && !isNaN(Number(c.amount))) val = Number(c.amount);
-    c._resolvedAmount = val;
+    // If user entered an annual figure, divide by 12 to get monthly
+    c._resolvedAmount = data.inputMode === 'annual' ? val / 12 : val;
   });
 
   // Accumulate scope Basic from Pass 1 for Pass 2 evaluation
