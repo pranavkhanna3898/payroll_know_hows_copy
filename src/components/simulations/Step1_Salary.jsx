@@ -21,7 +21,7 @@ export default function Step1_Salary({ state }) {
       <div className="sim-card-body">
         <div className="sim-input-grid">
           <div className="sim-input-group">
-            <label className="has-tooltip" data-tooltip="Total of all fixed standard components. Unprorated.">Base Monthly Gross (Step 0) <span className="tooltip-icon">?</span></label>
+            <label className="has-tooltip" data-tooltip="Total of all fixed standard components + monthly variable targets. Unprorated.">Base Monthly Gross (Step 0) <span className="tooltip-icon">?</span></label>
             <input type="number" value={standardGross} disabled style={{background: '#f1f5f9'}} />
           </div>
           <div className="sim-input-group">
@@ -148,7 +148,9 @@ export default function Step1_Salary({ state }) {
               <div style={{ display: 'flex', flexDirection: 'column', gap: 4, fontFamily: 'monospace', color: '#64748b' }}>
                 {overtimePay > 0 && <div>Overtime : {overtimeHours} hrs × ₹{otRate}/hr = <strong style={{color:'#15803d'}}>₹{Math.round(overtimePay).toLocaleString()}</strong></div>}
                 {leaveEncashmentPay > 0 && <div>Encashment : (₹{standardGross.toLocaleString()} ÷ 26) × {leaveEncashmentDays} days = <strong style={{color:'#15803d'}}>₹{Math.round(leaveEncashmentPay).toLocaleString()}</strong></div>}
-                {variablePay > 0 && <div>Variable ({variableComps.length} payout{variableComps.length > 1 ? 's' : ''}) : <strong style={{color:'#15803d'}}>₹{Math.round(variablePay).toLocaleString()}</strong></div>}
+                {variableComps.map(v => v.currentPayout > 0 && (
+                  <div key={v.id}>Variable ({v.name}) : <strong style={{color:'#15803d'}}>₹{Math.round(v.currentPayout).toLocaleString()}</strong></div>
+                ))}
                 {arrearsPay > 0 && <div>Arrears (historical prorated) : <strong style={{color:'#15803d'}}>₹{Math.round(arrearsPay).toLocaleString()}</strong></div>}
                 {reimbursementTaxStrategy === 'monthly' && monthlyReimbursements > 0 && <div>Reimbursements (taxed monthly) : <strong style={{color:'#15803d'}}>₹{Math.round(monthlyReimbursements * attendanceFactor).toLocaleString()}</strong></div>}
               </div>

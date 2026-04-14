@@ -41,7 +41,7 @@ export default function Step5_Statutory({ state }) {
           <div style={{ fontWeight: 700, color: '#475569', marginBottom: 8 }}>ESI Calculation Breakup</div>
           {esiApplicable ? (
             <div style={{ fontFamily: 'monospace', color: '#64748b', lineHeight: 1.8 }}>
-              ESI Base = Gross = ₹{fmt(grossSalary)} (≤ ₹21,000 → Applicable)<br/>
+              ESI Base = Gross = ₹{fmt(grossSalary)} (includes Variables; ≤ ₹21,000 threshold)<br/>
               EE Share = 0.75% × ₹{fmt(grossSalary)} = <strong style={{color:'#1e40af'}}>₹{fmt(esiEmployee)}</strong><br/>
               ER Share = 3.25% × ₹{fmt(grossSalary)} = <strong style={{color:'#7c3aed'}}>₹{fmt(esiEmployer)}</strong><br/>
               Total ESI = 4.00% × ₹{fmt(grossSalary)} = <strong>₹{fmt(esiEmployee + esiEmployer)}</strong>

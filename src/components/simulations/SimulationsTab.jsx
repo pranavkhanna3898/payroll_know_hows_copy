@@ -392,7 +392,8 @@ export default function SimulationsTab() {
     totalDeductions, netPay, taxFormulaDetail, totalMonthlyCTC, standardGross,
     calculatedHraExempt, hraFormulaString,
     projectedTaxObj,
-    annualGross, annualRent, projectedAnnualBasic, projectedAnnualHRA
+    annualGross, annualRent, projectedAnnualBasic, projectedAnnualHRA,
+    fixedGross: (basic + hra + special)
   };
 
   return (

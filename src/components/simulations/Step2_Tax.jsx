@@ -71,6 +71,7 @@ export default function Step2_Tax({ state }) {
             <div style={{ fontWeight: 700, color: '#475569', marginBottom: 6 }}>① Annualization of Gross</div>
             <div style={{ fontFamily: 'monospace', color: '#64748b', lineHeight: 1.7 }}>
               Annual Gross = (Standard Monthly Gross × 11) + Current Month Gross<br/>
+              ↳ Current Gross = Fixed (₹{Math.round(state.fixedGross).toLocaleString()}) + Additions (₹{Math.round(grossSalary - state.fixedGross).toLocaleString()})<br/>
               <span style={{ color: '#1e40af', fontWeight: 700 }}>= ₹{Math.round(annualGross - grossSalary).toLocaleString()} + ₹{Math.round(grossSalary).toLocaleString()} = ₹{Math.round(annualGross).toLocaleString()}</span>
             </div>
           </div>
