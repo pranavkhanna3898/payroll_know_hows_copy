@@ -166,7 +166,7 @@ export default function Step1_Salary({ state }) {
               + ₹{Math.round(special).toLocaleString()} (Allow)
               {overtimePay > 0 && ` + ₹${Math.round(overtimePay).toLocaleString()} (OT)`}
               {leaveEncashmentPay > 0 && ` + ₹${Math.round(leaveEncashmentPay).toLocaleString()} (LE)`}
-              {variablePay > 0 && ` + ₹${Math.round(variablePay).toLocaleString()} (Var)`}
+              {variablePay >= 0 && ` + ₹${Math.round(variablePay || 0).toLocaleString()} (Var)`}
               {arrearsPay > 0 && ` + ₹${Math.round(arrearsPay).toLocaleString()} (Arr)`}
             </div>
             <div style={{ fontSize: 20, fontWeight: 800, color: '#fff', marginTop: 8 }}>

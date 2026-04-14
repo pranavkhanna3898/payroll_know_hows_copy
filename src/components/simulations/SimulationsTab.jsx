@@ -168,13 +168,26 @@ export default function SimulationsTab() {
   const updateComponent = (id, field, value) => {
     // Cast to number if it looks like one, but keep strings for names/id/matrixId
     const isNumericField = ['amount', 'currentPayout'].includes(field);
-    const numValue = isNumericField && !isNaN(Number(value)) && value !== '' ? Number(value) : value;
+    let numValue = isNumericField && !isNaN(Number(value)) && value !== '' ? Number(value) : value;
     
     setData(prev => ({
       ...prev,
-      salaryComponents: prev.salaryComponents.map(c => 
-        c.id === id ? { ...c, [field]: numValue } : c
-      )
+      salaryComponents: prev.salaryComponents.map(c => {
+        if (c.id === id) {
+          const updated = { ...c, [field]: numValue };
+          // Logic: If user just set the 'amount' (target) for a variable component,
+          // and they haven't manually set a 'currentPayout' yet, sync it!
+          if (field === 'amount' && updated.type === 'variable' && (!updated.currentPayout || updated.currentPayout === 0)) {
+            updated.currentPayout = numValue;
+          }
+          // If user just changed type to 'variable', sync payout to amount
+          if (field === 'type' && value === 'variable') {
+            updated.currentPayout = updated.amount;
+          }
+          return updated;
+        }
+        return c;
+      })
     }));
   };
 

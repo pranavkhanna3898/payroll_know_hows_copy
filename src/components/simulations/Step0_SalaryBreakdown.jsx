@@ -69,11 +69,12 @@ export default function Step0_SalaryBreakdown({ state }) {
         else if (t.includes('reimbursement')) typeVal = 'reimbursement';
         else if (t.includes('employer') || t.includes('er'))    typeVal = 'employer_contrib';
         else if (t.includes('deduction') || t.includes('ee'))   typeVal = 'employee_deduction';
+        const amount = Number(row['Amount']) || 0;
         return {
           id: Date.now().toString() + '_' + idx,
           name, type: typeVal,
-          amount: Number(row['Amount']) || 0,
-          currentPayout: 0,
+          amount,
+          currentPayout: typeVal === 'variable' ? amount : 0,
           matrixId: 'custom',
           taxSchedule: YEAR_END_DEFAULTS.has(typeVal) ? 'year_end' : 'monthly',
         };
