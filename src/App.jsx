@@ -20,7 +20,7 @@ export default function App() {
           top: 0,
           zIndex: 9999
         }}>
-          ⚠️ Backend configuration (Supabase) is missing. Simulations will work, but data persistence is disabled.
+          ⚠️ Backend configuration (Supabase) is missing. If you just added the .env file, please <strong>restart your development server</strong> (Ctrl+C and npm run dev).
         </div>
       )}
       <PayrollMatrix />
