@@ -128,6 +128,7 @@ export default function PayrollOpsTab() {
           monthlyRentPaid: taxOv.monthlyRentPaid ?? 0,
           tdsDeductedSoFar: taxOv.tdsDeductedSoFar ?? 0,
           monthsRemaining: taxOv.monthsRemaining ?? 12,
+          inputMode: e.input_mode || 'monthly',
         };
 
         // Inject variable payouts into components

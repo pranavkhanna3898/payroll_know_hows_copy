@@ -56,6 +56,25 @@ const SectionCard = ({ title, icon, children, action }) => (
   </div>
 );
 
+const Pill = ({ active, children, onClick, color = '#2563eb' }) => (
+  <button
+    onClick={onClick}
+    style={{
+      padding: '4px 10px',
+      borderRadius: '20px',
+      fontSize: '10px',
+      fontWeight: '700',
+      cursor: 'pointer',
+      transition: 'all 0.2s',
+      border: `1.5px solid ${active ? color : '#cbd5e1'}`,
+      background: active ? color : 'transparent',
+      color: active ? 'white' : '#64748b',
+    }}
+  >
+    {children}
+  </button>
+);
+
 // ── Comp: EmployeeManagement ──────────────────────────────────────────────────
 function EmployeeManagement({ settings }) {
   const [employees, setEmployees] = useState([]);
@@ -82,6 +101,7 @@ function EmployeeManagement({ settings }) {
       department: 'Technology',
       designation: 'Software Engineer',
       salary_structure: JSON.parse(JSON.stringify(settings.defaultSalaryComponents || [])),
+      input_mode: settings.defaultInputMode || 'monthly',
       bank_info: { bank_name: '', account_no: '', ifsc: '' },
       is_active: true
     });
@@ -103,7 +123,18 @@ function EmployeeManagement({ settings }) {
     } catch (e) { alert('Error deleting: ' + e.message); }
   }
 
+const convertStructure = (structure, toAnnual) => {
+  return (structure || []).map(c => {
+    const val = parseFloat(c.amount);
+    if (isNaN(val)) return c;
+    const newVal = toAnnual ? val * 12 : val / 12;
+    return { ...c, amount: Math.round(newVal) };
+  });
+};
+
   if (editingEmp) {
+    const isAnnual = editingEmp.input_mode === 'annual';
+
     return (
       <div style={{ animation: 'fadeIn 0.2s' }}>
         <div style={{ marginBottom: 16, display: 'flex', gap: 12, alignItems: 'center' }}>
@@ -135,7 +166,29 @@ function EmployeeManagement({ settings }) {
           </Grid>
         </SectionCard>
 
-        <SectionCard title="Individual Salary Structure" icon="💰">
+        <SectionCard 
+          title="Individual Salary Structure" 
+          icon="💰"
+          action={
+            <div style={{ display: 'flex', gap: 6, alignItems: 'center', background: '#f1f5f9', padding: '4px 8px', borderRadius: 20 }}>
+              <span style={{ fontSize: 10, fontWeight: 700, color: '#64748b' }}>Entry:</span>
+              <Pill 
+                active={!isAnnual} 
+                onClick={() => {
+                  if (isAnnual) setEditingEmp({ ...editingEmp, input_mode: 'monthly', salary_structure: convertStructure(editingEmp.salary_structure, false) });
+                }} 
+                color="#0369a1"
+              >Monthly</Pill>
+              <Pill 
+                active={isAnnual} 
+                onClick={() => {
+                  if (!isAnnual) setEditingEmp({ ...editingEmp, input_mode: 'annual', salary_structure: convertStructure(editingEmp.salary_structure, true) });
+                }} 
+                color="#7c3aed"
+              >Annual</Pill>
+            </div>
+          }
+        >
           <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
             <thead>
               <tr style={{ background: '#f1f5f9' }}>
@@ -460,8 +513,38 @@ function SalaryStructureTemplate({ s, update }) {
     update('defaultSalaryComponents', s.defaultSalaryComponents.map(c => c.id === id ? { ...c, [field]: val } : c));
   }
 
+  const isAnnual = s.defaultInputMode === 'annual';
+
   return (
-    <SectionCard title="Default Salary Structure Template" icon="⚙️">
+    <SectionCard 
+      title="Default Salary Structure Template" 
+      icon="⚙️"
+      action={
+        <div style={{ display: 'flex', gap: 6, alignItems: 'center', background: '#f1f5f9', padding: '4px 8px', borderRadius: 20 }}>
+          <span style={{ fontSize: 10, fontWeight: 700, color: '#64748b' }}>Entry:</span>
+          <Pill 
+            active={!isAnnual} 
+            onClick={() => {
+              if (isAnnual) {
+                update('defaultInputMode', 'monthly');
+                update('defaultSalaryComponents', convertStructure(s.defaultSalaryComponents, false));
+              }
+            }} 
+            color="#0369a1"
+          >Monthly</Pill>
+          <Pill 
+            active={isAnnual} 
+            onClick={() => {
+              if (!isAnnual) {
+                update('defaultInputMode', 'annual');
+                update('defaultSalaryComponents', convertStructure(s.defaultSalaryComponents, true));
+              }
+            }} 
+            color="#7c3aed"
+          >Annual</Pill>
+        </div>
+      }
+    >
       <p style={{ fontSize: 12, color: '#64748b', marginBottom: 16 }}>These components will be pre-populated for every new employee.</p>
       <div style={{ overflowX: 'auto' }}>
         <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
