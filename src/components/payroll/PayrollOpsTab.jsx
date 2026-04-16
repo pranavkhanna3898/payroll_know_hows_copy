@@ -244,6 +244,39 @@ export default function PayrollOpsTab() {
   }, [activePayrun, employees]);
 
   // ── Operations ────────────────────────────────────────────────────────────────
+  const openPayrun = useCallback(async (payrun) => {
+    setLoading(true);
+    try {
+      const adjustments = await getPayrunAdjustments(payrun.id);
+      const adjMap = {};
+      const taxOvMap = {};
+      adjustments.forEach(a => { 
+        adjMap[a.employee_id] = a.adjustments; 
+        if (a.adjustments?.taxOverrides) {
+          taxOvMap[a.employee_id] = a.adjustments.taxOverrides;
+        }
+      });
+      
+      const employeeIds = adjustments.map(a => a.employee_id);
+      
+      const sessionPayrun = {
+        ...payrun,
+        employeeIds,
+        adjustments: adjMap,
+        taxOverrides: taxOvMap, 
+        publishedSlips: [],
+        monthLabel: payrun.month_year
+      };
+      
+      setActivePayrun(sessionPayrun);
+      const statusStepMap = { initiated: 1, reviewed: 2, tax_checked: 3, confirmed: 4, completed: 4 };
+      setStep(statusStepMap[payrun.status] ?? 1);
+    } catch (e) {
+      alert('Error opening payrun: ' + e.message);
+    }
+    setLoading(false);
+  }, []);
+
   const initiatePayrun = useCallback(async (month, year, selectedEmpIds) => {
     const monthLabel = new Date(year, month - 1, 1).toLocaleString('default', { month: 'long' }) + ' ' + year;
     
@@ -305,39 +338,6 @@ export default function PayrollOpsTab() {
       alert('Error confirming payrun: ' + e.message);
     }
   }, [activePayrun]);
-
-  const openPayrun = useCallback(async (payrun) => {
-    setLoading(true);
-    try {
-      const adjustments = await getPayrunAdjustments(payrun.id);
-      const adjMap = {};
-      const taxOvMap = {};
-      adjustments.forEach(a => { 
-        adjMap[a.employee_id] = a.adjustments; 
-        if (a.adjustments?.taxOverrides) {
-          taxOvMap[a.employee_id] = a.adjustments.taxOverrides;
-        }
-      });
-      
-      const employeeIds = adjustments.map(a => a.employee_id);
-      
-      const sessionPayrun = {
-        ...payrun,
-        employeeIds,
-        adjustments: adjMap,
-        taxOverrides: taxOvMap, 
-        publishedSlips: [],
-        monthLabel: payrun.month_year
-      };
-      
-      setActivePayrun(sessionPayrun);
-      const statusStepMap = { initiated: 1, reviewed: 2, tax_checked: 3, confirmed: 4, completed: 4 };
-      setStep(statusStepMap[payrun.status] ?? 1);
-    } catch (e) {
-      alert('Error opening payrun: ' + e.message);
-    }
-    setLoading(false);
-  }, []);
 
   if (loading) {
     return <div style={{ padding: 100, textAlign: 'center', color: '#6366f1', fontWeight: 700 }}>⚡ Loading Payroll Systems...</div>;
