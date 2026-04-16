@@ -166,7 +166,14 @@ export default function FinanceVerificationTab() {
                 {activeSub.type === 'it_declaration' && (
                   <div style={{ display: 'flex', flexDirection: 'column' }}>
                     <VerificationRow label="80C Investments" fieldName="investments80C" />
-                    <VerificationRow label="80D Medical" fieldName="medical80D" />
+                    <VerificationRow label="80D Medical (Self)" fieldName="medical80D_self" />
+                    <VerificationRow label="80D Medical (Parents)" fieldName="medical80D_parents" />
+                    <div style={{ padding: '0 0 8px 136px', fontSize: 11, color: '#64748b' }}>
+                      <label style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer' }}>
+                        <input type="checkbox" checked={!!verifiedData.medical80D_parents_senior} onChange={e => handleVerifiedChange('medical80D_parents_senior', e.target.checked)} />
+                        Verify Parents are Senior Citizens (Unlocks ₹50k cap)
+                      </label>
+                    </div>
                     <VerificationRow label="NPS 80CCD(1B)" fieldName="nps80CCD1B" />
                     <VerificationRow label="80G/80E" fieldName="deductions80GE" />
                     <VerificationRow label="Sec 24 Home Loan" fieldName="homeLoanInterest" />

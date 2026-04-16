@@ -134,12 +134,17 @@ export default function PayrollOpsTab() {
         // Apply verified IT Declarations
         const empDecl = verifiedSubs.find(s => s.employee_id === empId && s.type === 'it_declaration');
         if (empDecl && empDecl.verified_data) {
-          ['investments80C', 'medical80D', 'nps80CCD1B', 'homeLoanInterest', 'deductions80GE', 'savingsInterest80TTA', 'monthlyRentPaid', 'ltaClaimed'].forEach(f => {
+          ['investments80C', 'medical80D_self', 'medical80D_parents', 'nps80CCD1B', 'homeLoanInterest', 'deductions80GE', 'savingsInterest80TTA', 'monthlyRentPaid', 'ltaClaimed'].forEach(f => {
             if (empDecl.verified_data[f] !== undefined && ov[f] === undefined) {
               ov[f] = Number(empDecl.verified_data[f]);
               taxChanged = true;
             }
           });
+          // Handle boolean separately
+          if (empDecl.verified_data.medical80D_parents_senior !== undefined && ov.medical80D_parents_senior === undefined) {
+            ov.medical80D_parents_senior = Boolean(empDecl.verified_data.medical80D_parents_senior);
+            taxChanged = true;
+          }
         }
 
         // Fetch history if TDS deducted is still 0/undefined and not manually overridden
@@ -212,7 +217,9 @@ export default function PayrollOpsTab() {
           taxRegime: taxOv.taxRegime ?? e.tax_regime ?? 'new',
           isMetro: taxOv.isMetro ?? e.is_metro ?? true,
           investments80C: taxOv.investments80C ?? 0,
-          medical80D: taxOv.medical80D ?? 0,
+          medical80D_self: taxOv.medical80D_self ?? 0,
+          medical80D_parents: taxOv.medical80D_parents ?? 0,
+          medical80D_parents_senior: taxOv.medical80D_parents_senior ?? false,
           nps80CCD1B: taxOv.nps80CCD1B ?? 0,
           homeLoanInterest: taxOv.homeLoanInterest ?? 0,
           deductions80GE: taxOv.deductions80GE ?? 0,

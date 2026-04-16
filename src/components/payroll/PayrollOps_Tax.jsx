@@ -87,9 +87,19 @@ function TaxCard({ emp, activePayrun, updateTaxOverride }) {
                     <input type="number" value={field('investments80C')} onChange={e => update('investments80C', Number(e.target.value))} disabled={field('taxRegime') !== 'old'}
                       style={{ width: '100%', padding: '6px 10px', border: '1px solid #cbd5e1', borderRadius: 6, fontSize: 13 }} />
                   </Field>
-                  <Field label="80D Medical Premium">
-                    <input type="number" value={field('medical80D')} onChange={e => update('medical80D', Number(e.target.value))} disabled={field('taxRegime') !== 'old'}
+                  <Field label="80D Medical (Self)">
+                    <input type="number" value={field('medical80D_self')} onChange={e => update('medical80D_self', Number(e.target.value))} disabled={field('taxRegime') !== 'old'}
                       style={{ width: '100%', padding: '6px 10px', border: '1px solid #cbd5e1', borderRadius: 6, fontSize: 13 }} />
+                  </Field>
+                  <Field label="80D Medical (Parents)">
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                      <input type="number" value={field('medical80D_parents')} onChange={e => update('medical80D_parents', Number(e.target.value))} disabled={field('taxRegime') !== 'old'}
+                        style={{ width: '100%', padding: '6px 10px', border: '1px solid #cbd5e1', borderRadius: 6, fontSize: 13 }} />
+                      <label style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 10, cursor: 'pointer', opacity: field('taxRegime') !== 'old' ? 0.5 : 1 }}>
+                        <input type="checkbox" checked={field('medical80D_parents_senior')} onChange={e => update('medical80D_parents_senior', e.target.checked)} disabled={field('taxRegime') !== 'old'} />
+                        Parents are Senior Citizens
+                      </label>
+                    </div>
                   </Field>
                   <Field label="80CCD(1B) NPS (Max 50k)">
                     <input type="number" value={field('nps80CCD1B')} onChange={e => update('nps80CCD1B', Number(e.target.value))} disabled={field('taxRegime') !== 'old'}

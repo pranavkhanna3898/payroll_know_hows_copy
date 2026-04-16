@@ -2,7 +2,7 @@ import React from 'react';
 
 export default function Step2_Tax({ state }) {
   const {
-    taxRegime, investments80C, medical80D, nps80CCD1B, homeLoanInterest, deductions80GE, savingsInterest80TTA, ltaClaimed,
+    taxRegime, investments80C, medical80D_self, medical80D_parents, medical80D_parents_senior, nps80CCD1B, homeLoanInterest, deductions80GE, savingsInterest80TTA, ltaClaimed,
     isMetro, monthlyRentPaid, tdsDeductedSoFar, monthsRemaining,
     updateData, grossSalary, annualGross, taxableIncome, annualTax, tds, taxFormulaDetail,
     calculatedHraExempt, hraFormulaString, 
@@ -42,8 +42,18 @@ export default function Step2_Tax({ state }) {
             <input type="number" value={investments80C} disabled={taxRegime === 'new'} onChange={(e) => updateData('investments80C', e.target.value)} />
           </div>
           <div className="sim-input-group" style={{opacity: taxRegime === 'new' ? 0.4 : 1}}>
-            <label>80D Medical Premium</label>
-            <input type="number" value={medical80D} disabled={taxRegime === 'new'} onChange={(e) => updateData('medical80D', e.target.value)} />
+            <label>80D Medical (Self)</label>
+            <input type="number" value={medical80D_self} disabled={taxRegime === 'new'} onChange={(e) => updateData('medical80D_self', e.target.value)} />
+          </div>
+          <div className="sim-input-group" style={{opacity: taxRegime === 'new' ? 0.4 : 1}}>
+            <label>80D Medical (Parents)</label>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+              <input type="number" value={medical80D_parents} disabled={taxRegime === 'new'} onChange={(e) => updateData('medical80D_parents', e.target.value)} />
+              <label style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 10, cursor: 'pointer', opacity: taxRegime === 'new' ? 0.5 : 1 }}>
+                <input type="checkbox" checked={!!medical80D_parents_senior} onChange={(e) => updateData('medical80D_parents_senior', e.target.checked)} disabled={taxRegime === 'new'} />
+                Parents are Senior Citizens
+              </label>
+            </div>
           </div>
           <div className="sim-input-group" style={{opacity: taxRegime === 'new' ? 0.4 : 1}}>
             <label className="has-tooltip" data-tooltip="Additional NPS deduction. Max 50k.">80CCD(1B) NPS (Max 50k)</label>
@@ -102,12 +112,12 @@ export default function Step2_Tax({ state }) {
           {/* HRA Exemption Audit */}
           {taxRegime === 'old' && calculatedHraExempt > 0 && (
             <div style={{ background: '#f0f9ff', borderRadius: 6, padding: '10px 14px', marginBottom: 10, fontSize: 12, border: '1px solid #bae6fd' }}>
-              <div style={{ fontWeight: 700, color: '#0369a1', marginBottom: 6 }}>🏘️ HRA Exemption Trace (Min of 3)</div>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, fontFamily: 'monospace', fontSize: 11 }}>
-                <div style={{ color: calculatedHraExempt === hraActual ? '#059669' : '#64748b' }}>Actual HRA: ₹{Math.round(hraActual).toLocaleString()}</div>
-                <div style={{ color: calculatedHraExempt === hraRentExcess ? '#059669' : '#64748b' }}>Rent-10%Basic: ₹{Math.round(hraRentExcess).toLocaleString()}</div>
-                <div style={{ color: calculatedHraExempt === hraCityLimit ? '#059669' : '#64748b' }}>{isMetro ? '50%' : '40%'} limit: ₹{Math.round(hraCityLimit).toLocaleString()}</div>
-                <div style={{ fontWeight: 800, color: '#0369a1', textAlign: 'right' }}>Total Exempt: ₹{Math.round(calculatedHraExempt).toLocaleString()}</div>
+              <div style={{ fontWeight: 700, color: '#0369a1', marginBottom: 6 }}>🏘️ HRA Exemption Trace (Lowest of the 3 is allowed)</div>
+              <div style={{ display: 'grid', gridTemplateColumns: 'minmax(150px, 1fr) minmax(150px, 1fr)', gap: 10, fontFamily: 'monospace', fontSize: 11 }}>
+                <div style={{ color: calculatedHraExempt === hraActual ? '#059669' : '#64748b', fontWeight: calculatedHraExempt === hraActual ? 700 : 400 }}>Actual HRA Received: ₹{Math.round(hraActual).toLocaleString()}</div>
+                <div style={{ color: calculatedHraExempt === hraRentExcess ? '#059669' : '#64748b', fontWeight: calculatedHraExempt === hraRentExcess ? 700 : 400 }}>Rent Paid - 10% Basic: ₹{Math.round(hraRentExcess).toLocaleString()}</div>
+                <div style={{ color: calculatedHraExempt === hraCityLimit ? '#059669' : '#64748b', fontWeight: calculatedHraExempt === hraCityLimit ? 700 : 400 }}>{isMetro ? '50%' : '40%'} of Basic Salary: ₹{Math.round(hraCityLimit).toLocaleString()}</div>
+                <div style={{ fontWeight: 800, color: '#0369a1', textAlign: 'right' }}>Final Allowed Exemption: ₹{Math.round(calculatedHraExempt).toLocaleString()}</div>
               </div>
             </div>
           )}

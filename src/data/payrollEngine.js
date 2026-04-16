@@ -37,7 +37,9 @@ export const evaluateTaxLiability = ({
   annualGross,
   taxRegime,
   investments80C = 0,
-  medical80D = 0,
+  medical80D_self = 0, // Self & family limit 25k
+  medical80D_parents = 0, // Parent limit 25k or 50k
+  medical80D_parents_senior = false, // If parent is senior citizen
   nps80CCD1B = 0, // Additional NPS (Section 80CCD(1B))
   homeLoanInterest = 0, // Section 24(b)
   deductions80GE = 0, // 80G, 80E
@@ -51,7 +53,10 @@ export const evaluateTaxLiability = ({
 }) => {
   // --- Standard Capping Logic ---
   const capped80C = Math.min(150000, investments80C);
-  const capped80D = medical80D; // Usually 25k/50k depending on age, simplified here as per user entry
+  const capped80DSelf = Math.min(25000, medical80D_self);
+  const parentLimit = medical80D_parents_senior ? 50000 : 25000;
+  const capped80DParents = Math.min(parentLimit, medical80D_parents);
+  const capped80D = capped80DSelf + capped80DParents;
   const cappedNPS = Math.min(50000, nps80CCD1B);
   const cappedHomeLoan = Math.min(200000, homeLoanInterest); // Self-occupied limit
 
@@ -153,7 +158,9 @@ export const computeEmployeePayroll = (emp) => {
     inputMode = 'monthly',
     taxRegime = 'new',
     investments80C = 0,
-    medical80D = 0,
+    medical80D_self = 0,
+    medical80D_parents = 0,
+    medical80D_parents_senior = false,
     nps80CCD1B = 0,
     homeLoanInterest = 0,
     deductions80GE = 0,
@@ -272,7 +279,9 @@ export const computeEmployeePayroll = (emp) => {
     annualGross,
     taxRegime,
     investments80C,
-    medical80D,
+    medical80D_self,
+    medical80D_parents,
+    medical80D_parents_senior,
     nps80CCD1B,
     homeLoanInterest,
     deductions80GE,

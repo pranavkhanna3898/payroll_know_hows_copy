@@ -63,7 +63,9 @@ export default function SimulationsTab() {
 
     taxRegime: "new",
     investments80C: 0,
-    medical80D: 0,
+    medical80D_self: 0,
+    medical80D_parents: 0,
+    medical80D_parents_senior: false,
     nps80CCD1B: 0,
     homeLoanInterest: 0,
     deductions80GE: 0,
@@ -157,7 +159,7 @@ export default function SimulationsTab() {
   const computed = computeEmployeePayroll(data);
   const { 
     annualTax, taxableIncome, tds, monthlyReimbursements, annualGross, 
-    taxRegime, investments80C, medical80D, nps80CCD1B, homeLoanInterest,
+    taxRegime, investments80C, medical80D_self, medical80D_parents, medical80D_parents_senior, nps80CCD1B, homeLoanInterest,
     deductions80GE, savingsInterest80TTA, ltaClaimed, isMetro, standardHRA, 
     projectedAnnualBasic, projectedAnnualHRA, annualRent,
     hraActual, hraRentExcess, hraCityLimit, calculatedHraExempt, hraFormulaString
@@ -169,7 +171,9 @@ export default function SimulationsTab() {
     annualGross: annualGross + (data.reimbursementTaxStrategy === 'year_end' ? monthlyReimbursements * 12 : 0),
     taxRegime,
     investments80C,
-    medical80D,
+    medical80D_self,
+    medical80D_parents,
+    medical80D_parents_senior,
     nps80CCD1B,
     homeLoanInterest,
     deductions80GE,

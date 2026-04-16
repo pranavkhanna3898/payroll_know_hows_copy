@@ -155,10 +155,23 @@ export default function EmployeePortal() {
               </div>
             </Field>
 
-            <Field label="80D Medical Premium">
+            <Field label="80D Medical (Self & Family)">
               <div style={{ display: 'flex', gap: 10 }}>
-                <NumberInput value={declForm.medical80D} onChange={v => handleDeclChange('medical80D', v)} disabled={!canSubmitDecl || isDeclVerified} />
-                <input type="file" onChange={e => handleDeclFileChange('medical80D', e)} disabled={!canSubmitDecl || isDeclVerified} />
+                <NumberInput value={declForm.medical80D_self} onChange={v => handleDeclChange('medical80D_self', v)} disabled={!canSubmitDecl || isDeclVerified} />
+                <input type="file" onChange={e => handleDeclFileChange('medical80D_self', e)} disabled={!canSubmitDecl || isDeclVerified} />
+              </div>
+            </Field>
+
+            <Field label="80D Medical (Parents)">
+              <div style={{ display: 'flex', gap: 10 }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 4, flex: 1 }}>
+                  <NumberInput value={declForm.medical80D_parents} onChange={v => handleDeclChange('medical80D_parents', v)} disabled={!canSubmitDecl || isDeclVerified} />
+                  <label style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 10, cursor: 'pointer' }}>
+                    <input type="checkbox" checked={!!declForm.medical80D_parents_senior} onChange={e => handleDeclChange('medical80D_parents_senior', e.target.checked)} disabled={!canSubmitDecl || isDeclVerified} />
+                    Parents are Senior Citizens (60+)
+                  </label>
+                </div>
+                <input type="file" onChange={e => handleDeclFileChange('medical80D_parents', e)} disabled={!canSubmitDecl || isDeclVerified} />
               </div>
             </Field>
 
