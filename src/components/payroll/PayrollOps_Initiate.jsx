@@ -11,6 +11,7 @@ const STATUS_COLORS = {
   tax_checked: { bg: '#e0e7ff', color: '#4338ca', label: 'Tax Checked' },
   confirmed: { bg: '#d1fae5', color: '#065f46', label: 'Confirmed' },
   slips_generated: { bg: '#d1fae5', color: '#065f46', label: 'Slips Generated' },
+  completed: { bg: '#dcfce7', color: '#166534', label: 'Completed' },
 };
 
 export default function PayrollOps_Initiate({ store, onInitiate, onOpenPayrun, onDeletePayrun }) {
