@@ -38,28 +38,48 @@ export const evaluateTaxLiability = ({
   taxRegime,
   investments80C = 0,
   medical80D = 0,
+  nps80CCD1B = 0, // Additional NPS (Section 80CCD(1B))
+  homeLoanInterest = 0, // Section 24(b)
+  deductions80GE = 0, // 80G, 80E
+  savingsInterest80TTA = 0, // 80TTA, 80TTB
+  ltaClaimed = 0,
   isMetro = true,
   standardHRA = 0,
   projectedAnnualBasic = 0,
   projectedAnnualHRA = 0,
   annualRent = 0,
 }) => {
-  const total80C = Math.min(150000, investments80C);
+  // --- Standard Capping Logic ---
+  const capped80C = Math.min(150000, investments80C);
+  const capped80D = medical80D; // Usually 25k/50k depending on age, simplified here as per user entry
+  const cappedNPS = Math.min(50000, nps80CCD1B);
+  const cappedHomeLoan = Math.min(200000, homeLoanInterest); // Self-occupied limit
+
   let taxableIncome = 0;
   let annualTax = 0;
   let taxFormulaDetail = '0';
   let calculatedHraExempt = 0;
   let hraFormulaString = 'Not applicable (New Regime or no HRA)';
+  
+  // Breakdown of HRA rules
+  let hraActual = 0;
+  let hraRentExcess = 0;
+  let hraCityLimit = 0;
 
   if (taxRegime === 'old') {
     if (standardHRA > 0) {
-      const min1 = projectedAnnualHRA;
-      const min2 = Math.max(0, annualRent - 0.10 * projectedAnnualBasic);
-      const min3 = isMetro ? 0.50 * projectedAnnualBasic : 0.40 * projectedAnnualBasic;
-      calculatedHraExempt = Math.min(min1, min2, min3);
-      hraFormulaString = `Min(Actual HRA: ${min1.toLocaleString()}, Rent-10%Basic: ${min2.toLocaleString()}, ${isMetro ? '50%' : '40%'}Basic: ${min3.toLocaleString()})`;
+      hraActual = projectedAnnualHRA;
+      hraRentExcess = Math.max(0, annualRent - 0.10 * projectedAnnualBasic);
+      hraCityLimit = isMetro ? 0.50 * projectedAnnualBasic : 0.40 * projectedAnnualBasic;
+      
+      calculatedHraExempt = Math.min(hraActual, hraRentExcess, hraCityLimit);
+      hraFormulaString = `Min(Actual: ₹${Math.round(hraActual).toLocaleString()}, Rent-10%Basic: ₹${Math.round(hraRentExcess).toLocaleString()}, ${isMetro ? '50%' : '40%'}Basic: ₹${Math.round(hraCityLimit).toLocaleString()})`;
     }
-    taxableIncome = Math.max(0, annualGross - total80C - medical80D - 50000 - calculatedHraExempt);
+
+    // Total Deductions (Old Regime)
+    const totalDeductions = capped80C + capped80D + cappedNPS + cappedHomeLoan + deductions80GE + savingsInterest80TTA + ltaClaimed + 50000 + calculatedHraExempt;
+    taxableIncome = Math.max(0, annualGross - totalDeductions);
+
     let baseTax = 0;
     if (taxableIncome > 1000000) {
       baseTax = 112500 + (taxableIncome - 1000000) * 0.3;
@@ -134,6 +154,11 @@ export const computeEmployeePayroll = (emp) => {
     taxRegime = 'new',
     investments80C = 0,
     medical80D = 0,
+    nps80CCD1B = 0,
+    homeLoanInterest = 0,
+    deductions80GE = 0,
+    savingsInterest80TTA = 0,
+    ltaClaimed = 0,
     isMetro = true,
     monthlyRentPaid = 0,
     tdsDeductedSoFar = 0,
@@ -248,13 +273,23 @@ export const computeEmployeePayroll = (emp) => {
     taxRegime,
     investments80C,
     medical80D,
+    nps80CCD1B,
+    homeLoanInterest,
+    deductions80GE,
+    savingsInterest80TTA,
+    ltaClaimed,
     isMetro,
-    standardHRA,
+    standardHRA: standardHRA * 12,
     projectedAnnualBasic,
     projectedAnnualHRA,
     annualRent,
   });
-  const { taxableIncome, annualTax, taxFormulaDetail, calculatedHraExempt, hraFormulaString } = taxCalc;
+
+  const { 
+    taxableIncome, annualTax, taxFormulaDetail, 
+    calculatedHraExempt, hraFormulaString,
+    hraActual, hraRentExcess, hraCityLimit
+  } = taxCalc;
   const remainingTax = Math.max(0, annualTax - tdsDeductedSoFar);
   const tds = monthsRemaining > 0 ? remainingTax / monthsRemaining : 0;
 
@@ -296,6 +331,7 @@ export const computeEmployeePayroll = (emp) => {
     // Tax
     annualGross, taxableIncome, annualTax, tds,
     taxFormulaDetail, calculatedHraExempt, hraFormulaString,
+    hraActual, hraRentExcess, hraCityLimit,
     annualRent, projectedAnnualBasic, projectedAnnualHRA,
     // Deductions
     pfEmployee, pfEmployer, pfEps, pfErShare,

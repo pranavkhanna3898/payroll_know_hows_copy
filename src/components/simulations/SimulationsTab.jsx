@@ -64,6 +64,11 @@ export default function SimulationsTab() {
     taxRegime: "new",
     investments80C: 0,
     medical80D: 0,
+    nps80CCD1B: 0,
+    homeLoanInterest: 0,
+    deductions80GE: 0,
+    savingsInterest80TTA: 0,
+    ltaClaimed: 0,
     isMetro: true,
     monthlyRentPaid: 0,
     epfCalculationMethod: 'prorated_ceiling',
@@ -150,7 +155,13 @@ export default function SimulationsTab() {
 
   // Shared derived calculations using the common engine
   const computed = computeEmployeePayroll(data);
-  const { annualTax, taxableIncome, tds, monthlyReimbursements, annualGross, taxRegime, investments80C, medical80D, isMetro, standardHRA, projectedAnnualBasic, projectedAnnualHRA, annualRent } = computed;
+  const { 
+    annualTax, taxableIncome, tds, monthlyReimbursements, annualGross, 
+    taxRegime, investments80C, medical80D, nps80CCD1B, homeLoanInterest,
+    deductions80GE, savingsInterest80TTA, ltaClaimed, isMetro, standardHRA, 
+    projectedAnnualBasic, projectedAnnualHRA, annualRent,
+    hraActual, hraRentExcess, hraCityLimit, calculatedHraExempt, hraFormulaString
+  } = computed;
 
   // Compute "what-if" projection: What if reimbursements are NOT submitted and become fully taxable?
   // We do this by evaluating tax with calculatedHraExempt: 0 and annualGross including the reims
@@ -159,6 +170,11 @@ export default function SimulationsTab() {
     taxRegime,
     investments80C,
     medical80D,
+    nps80CCD1B,
+    homeLoanInterest,
+    deductions80GE,
+    savingsInterest80TTA,
+    ltaClaimed,
     isMetro,
     standardHRA,
     projectedAnnualBasic,

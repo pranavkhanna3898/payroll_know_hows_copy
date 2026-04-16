@@ -2,6 +2,16 @@ import { useState } from 'react';
 
 const fmt = v => Math.round(v || 0).toLocaleString('en-IN');
 
+const Field = ({ label, children, hint }) => (
+  <div style={{ flex: 1 }}>
+    <div style={{ fontSize: 10, fontWeight: 700, color: '#64748b', textTransform: 'uppercase', marginBottom: 4, display: 'flex', justifyContent: 'space-between' }}>
+      {label}
+      {hint && <span style={{ fontWeight: 400, textTransform: 'none', color: '#94a3b8' }}>{hint}</span>}
+    </div>
+    {children}
+  </div>
+);
+
 function TaxCard({ emp, activePayrun, updateTaxOverride }) {
   const [expanded, setExpanded] = useState(false);
   const { computed: c, id } = emp;
@@ -46,45 +56,84 @@ function TaxCard({ emp, activePayrun, updateTaxOverride }) {
           {/* IT Declaration Inputs */}
           <div style={{ padding: 20, background: '#fafafa', borderBottom: '1px solid #e2e8f0' }}>
             <h4 style={{ fontSize: 12, fontWeight: 700, color: '#334155', textTransform: 'uppercase', marginBottom: 14, letterSpacing: 0.4 }}>📋 IT Declaration &amp; Deductions</h4>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 14 }}>
-              {/* Tax Regime */}
-              <div>
-                <div style={{ fontSize: 10, fontWeight: 700, color: '#64748b', textTransform: 'uppercase', marginBottom: 4 }}>Tax Regime</div>
-                <select value={field('taxRegime')} onChange={e => update('taxRegime', e.target.value)}
-                  style={{ width: '100%', padding: '8px 10px', border: '1px solid #cbd5e1', borderRadius: 6, fontSize: 13, outline: 'none' }}>
-                  <option value="new">New Regime (FY26-27)</option>
-                  <option value="old">Old Regime</option>
-                </select>
-              </div>
-              {/* Investments */}
-              {[
-                ['Sec 80C Investments (₹)', 'investments80C', field('taxRegime') !== 'old'],
-                ['Sec 80D Medical Premium (₹)', 'medical80D', field('taxRegime') !== 'old'],
-                ['Monthly Rent Paid (₹)', 'monthlyRentPaid', field('taxRegime') !== 'old'],
-              ].map(([label, key, disabled]) => (
-                <div key={key}>
-                  <div style={{ fontSize: 10, fontWeight: 700, color: '#64748b', textTransform: 'uppercase', marginBottom: 4 }}>{label}</div>
-                  <input type="number" value={field(key)} onChange={e => update(key, Number(e.target.value))} disabled={disabled}
-                    style={{ width: '100%', padding: '8px 10px', border: '1px solid #cbd5e1', borderRadius: 6, fontSize: 13, outline: 'none', background: disabled ? '#f1f5f9' : 'white', opacity: disabled ? 0.5 : 1 }} />
+            
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 20 }}>
+              {/* Regime & Basic Status */}
+              <div style={{ background: 'white', padding: 12, borderRadius: 8, border: '1px solid #e2e8f0' }}>
+                <div style={{ fontSize: 10, fontWeight: 700, color: '#6366f1', marginBottom: 8, textTransform: 'uppercase' }}>Regime & City</div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                  <Field label="Tax Regime">
+                    <select value={field('taxRegime')} onChange={e => update('taxRegime', e.target.value)}
+                      style={{ width: '100%', padding: '6px 10px', border: '1px solid #cbd5e1', borderRadius: 6, fontSize: 13 }}>
+                      <option value="new">New Regime (FY26-27)</option>
+                      <option value="old">Old Regime</option>
+                    </select>
+                  </Field>
+                  <Field label="City Type (HRA)">
+                    <select value={String(field('isMetro', 'isMetro'))} onChange={e => update('isMetro', e.target.value === 'true')} disabled={field('taxRegime') !== 'old'}
+                      style={{ width: '100%', padding: '6px 10px', border: '1px solid #cbd5e1', borderRadius: 6, fontSize: 13 }}>
+                      <option value="true">Metro (50% Basic)</option>
+                      <option value="false">Non-Metro (40% Basic)</option>
+                    </select>
+                  </Field>
                 </div>
-              ))}
-              <div>
-                <div style={{ fontSize: 10, fontWeight: 700, color: '#64748b', textTransform: 'uppercase', marginBottom: 4 }}>City Type (HRA)</div>
-                <select value={String(field('isMetro', 'isMetro'))} onChange={e => update('isMetro', e.target.value === 'true')} disabled={field('taxRegime') !== 'old'}
-                  style={{ width: '100%', padding: '8px 10px', border: '1px solid #cbd5e1', borderRadius: 6, fontSize: 13, outline: 'none', opacity: field('taxRegime') !== 'old' ? 0.5 : 1 }}>
-                  <option value="true">Metro (50% Basic)</option>
-                  <option value="false">Non-Metro (40% Basic)</option>
-                </select>
               </div>
-              <div>
-                <div style={{ fontSize: 10, fontWeight: 700, color: '#64748b', textTransform: 'uppercase', marginBottom: 4 }}>TDS Deducted YTD (₹)</div>
-                <input type="number" value={field('tdsDeductedSoFar')} onChange={e => update('tdsDeductedSoFar', Number(e.target.value))}
-                  style={{ width: '100%', padding: '8px 10px', border: '1px solid #cbd5e1', borderRadius: 6, fontSize: 13, outline: 'none' }} />
+
+              {/* Chapter VI-A Deductions */}
+              <div style={{ background: 'white', padding: 12, borderRadius: 8, border: '1px solid #e2e8f0' }}>
+                <div style={{ fontSize: 10, fontWeight: 700, color: '#059669', marginBottom: 8, textTransform: 'uppercase' }}>Chapter VI-A (80C, 80D, NPS)</div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                  <Field label="80C Investments (Max 1.5L)" hint="LIC, ELSS, PPF, etc.">
+                    <input type="number" value={field('investments80C')} onChange={e => update('investments80C', Number(e.target.value))} disabled={field('taxRegime') !== 'old'}
+                      style={{ width: '100%', padding: '6px 10px', border: '1px solid #cbd5e1', borderRadius: 6, fontSize: 13 }} />
+                  </Field>
+                  <Field label="80D Medical Premium">
+                    <input type="number" value={field('medical80D')} onChange={e => update('medical80D', Number(e.target.value))} disabled={field('taxRegime') !== 'old'}
+                      style={{ width: '100%', padding: '6px 10px', border: '1px solid #cbd5e1', borderRadius: 6, fontSize: 13 }} />
+                  </Field>
+                  <Field label="80CCD(1B) NPS (Max 50k)">
+                    <input type="number" value={field('nps80CCD1B')} onChange={e => update('nps80CCD1B', Number(e.target.value))} disabled={field('taxRegime') !== 'old'}
+                      style={{ width: '100%', padding: '6px 10px', border: '1px solid #cbd5e1', borderRadius: 6, fontSize: 13 }} />
+                  </Field>
+                </div>
               </div>
-              <div>
-                <div style={{ fontSize: 10, fontWeight: 700, color: '#64748b', textTransform: 'uppercase', marginBottom: 4 }}>Remaining Months in FY</div>
-                <input type="number" min="1" value={field('monthsRemaining')} onChange={e => update('monthsRemaining', Number(e.target.value))}
-                  style={{ width: '100%', padding: '8px 10px', border: '1px solid #cbd5e1', borderRadius: 6, fontSize: 13, outline: 'none' }} />
+
+              {/* Home Loan & Others */}
+              <div style={{ background: 'white', padding: 12, borderRadius: 8, border: '1px solid #e2e8f0' }}>
+                <div style={{ fontSize: 10, fontWeight: 700, color: '#dc2626', marginBottom: 8, textTransform: 'uppercase' }}>Property & Others</div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                  <Field label="Home Loan Int. (Sec 24)">
+                    <input type="number" value={field('homeLoanInterest')} onChange={e => update('homeLoanInterest', Number(e.target.value))} disabled={field('taxRegime') !== 'old'}
+                      style={{ width: '100%', padding: '6px 10px', border: '1px solid #cbd5e1', borderRadius: 6, fontSize: 13 }} />
+                  </Field>
+                  <Field label="Monthly Rent Paid">
+                    <input type="number" value={field('monthlyRentPaid')} onChange={e => update('monthlyRentPaid', Number(e.target.value))} disabled={field('taxRegime') !== 'old'}
+                      style={{ width: '100%', padding: '6px 10px', border: '1px solid #cbd5e1', borderRadius: 6, fontSize: 13 }} />
+                  </Field>
+                  <Field label="Sec 80G / 80E" hint="Donations / Ed. Loan">
+                    <input type="number" value={field('deductions80GE')} onChange={e => update('deductions80GE', Number(e.target.value))} disabled={field('taxRegime') !== 'old'}
+                      style={{ width: '100%', padding: '6px 10px', border: '1px solid #cbd5e1', borderRadius: 6, fontSize: 13 }} />
+                  </Field>
+                  <Field label="80TTA/TTB (Savings Int)" hint="Max 10k/50k">
+                    <input type="number" value={field('savingsInterest80TTA')} onChange={e => update('savingsInterest80TTA', Number(e.target.value))} disabled={field('taxRegime') !== 'old'}
+                      style={{ width: '100%', padding: '6px 10px', border: '1px solid #cbd5e1', borderRadius: 6, fontSize: 13 }} />
+                  </Field>
+                </div>
+              </div>
+
+              {/* YTD Status */}
+              <div style={{ background: '#f8fafc', padding: 12, borderRadius: 8, border: '1px solid #e2e8f0' }}>
+                <div style={{ fontSize: 10, fontWeight: 700, color: '#475569', marginBottom: 8, textTransform: 'uppercase' }}>YTD Recovery Status</div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                  <Field label="TDS Paid So Far (YTD)">
+                    <input type="number" value={field('tdsDeductedSoFar')} onChange={e => update('tdsDeductedSoFar', Number(e.target.value))}
+                      style={{ width: '100%', padding: '6px 10px', border: '1px solid #cbd5e1', borderRadius: 6, fontSize: 13 }} />
+                  </Field>
+                  <Field label="Rem. Months in FY">
+                    <input type="number" min="1" max="12" value={field('monthsRemaining')} onChange={e => update('monthsRemaining', Number(e.target.value))}
+                      style={{ width: '100%', padding: '6px 10px', border: '1px solid #cbd5e1', borderRadius: 6, fontSize: 13 }} />
+                  </Field>
+                </div>
               </div>
             </div>
           </div>
@@ -92,21 +141,50 @@ function TaxCard({ emp, activePayrun, updateTaxOverride }) {
           {/* Tax Computation Trace */}
           <div style={{ padding: 20 }}>
             <h4 style={{ fontSize: 12, fontWeight: 700, color: '#334155', textTransform: 'uppercase', marginBottom: 14, letterSpacing: 0.4 }}>🔬 Tax Computation Trace</h4>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: 16 }}>
               {/* Annualization */}
               <div style={{ background: '#f8fafc', borderRadius: 8, padding: '12px 14px', fontSize: 12 }}>
                 <div style={{ fontWeight: 700, color: '#475569', marginBottom: 6 }}>① Annualization of Gross</div>
                 <div style={{ fontFamily: 'monospace', color: '#64748b', lineHeight: 1.7 }}>
-                  Standard Monthly × 11 + Current Month Gross<br/>
-                  <span style={{ color: '#1e40af', fontWeight: 700 }}>= ₹{fmt(c.annualGross - c.grossSalary)} + ₹{fmt(c.grossSalary)} = ₹{fmt(c.annualGross)}</span>
+                  Base Projection: ₹{fmt(c.standardGross * 11)}<br/>
+                  Current Month Actual: ₹{fmt(c.grossSalary)}<br/>
+                  <span style={{ color: '#1e40af', fontWeight: 700 }}>Projected Annual Gross = ₹{fmt(c.annualGross)}</span>
                 </div>
               </div>
+
+              {/* HRA Exemption Card - ONLY SHOWN IF APPLICABLE */}
+              {field('taxRegime') === 'old' && c.calculatedHraExempt > 0 && (
+                <div style={{ background: '#f0f9ff', borderRadius: 8, padding: '12px 14px', fontSize: 12, border: '1px solid #bae6fd' }}>
+                   <div style={{ fontWeight: 700, color: '#0369a1', marginBottom: 6, display: 'flex', justifyContent: 'space-between' }}>
+                    <span>🏘️ HRA Exemption Audit (Min of 3)</span>
+                    <span style={{ background: '#0369a1', color: 'white', padding: '0 6px', borderRadius: 4 }}>Passed</span>
+                   </div>
+                   <div style={{ display: 'flex', flexDirection: 'column', gap: 4, fontFamily: 'monospace', fontSize: 11 }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', color: c.calculatedHraExempt === c.hraActual ? '#059669' : '#64748b' }}>
+                        <span>1. Actual HRA Received</span>
+                        <span>₹{fmt(c.hraActual)}</span>
+                      </div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', color: c.calculatedHraExempt === c.hraRentExcess ? '#059669' : '#64748b' }}>
+                        <span>2. Rent - 10% Basic</span>
+                        <span>₹{fmt(c.hraRentExcess)}</span>
+                      </div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', color: c.calculatedHraExempt === c.hraCityLimit ? '#059669' : '#64748b' }}>
+                        <span>3. {field('isMetro', 'isMetro') ? '50%' : '40%'} of Basic</span>
+                        <span>₹{fmt(c.hraCityLimit)}</span>
+                      </div>
+                      <div style={{ marginTop: 6, paddingTop: 6, borderTop: '1px dashed #bae6fd', fontSize: 12, fontWeight: 800, color: '#0369a1', textAlign: 'right' }}>
+                        Exempt Amount = ₹{fmt(c.calculatedHraExempt)}
+                      </div>
+                   </div>
+                </div>
+              )}
+
               {/* Deductions / Taxable */}
               <div style={{ background: '#f8fafc', borderRadius: 8, padding: '12px 14px', fontSize: 12 }}>
                 <div style={{ fontWeight: 700, color: '#475569', marginBottom: 6 }}>② Taxable Income</div>
                 <div style={{ fontFamily: 'monospace', color: '#64748b', lineHeight: 1.7 }}>
-                  {field('taxRegime') === 'new' ? 'After ₹75,000 Standard Deduction' : 'After 80C/80D/HRA Deductions'}<br/>
-                  <span style={{ color: '#7c3aed', fontWeight: 700 }}>= ₹{fmt(c.taxableIncome)}</span>
+                  {field('taxRegime') === 'new' ? 'Standard Deduction: ₹75,000' : `Total Deductions Trace: ₹${fmt(c.annualGross - c.taxableIncome)}`}<br/>
+                  <span style={{ color: '#7c3aed', fontWeight: 700 }}>Current Taxable Base = ₹{fmt(c.taxableIncome)}</span>
                 </div>
               </div>
               {/* Slab computation */}

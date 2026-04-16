@@ -1,6 +1,6 @@
-import { useState, useCallback, useEffect } from 'react';
-import { getEmployees, getPayruns, createPayrun, updatePayrunStatus, getPayrunAdjustments, savePayrunAdjustment } from '../../data/api';
+import { getEmployees, getPayruns, createPayrun, updatePayrunStatus, getPayrunAdjustments, savePayrunAdjustment, getEmployeeFYTaxHistory } from '../../data/api';
 import { computeEmployeePayroll } from '../../data/payrollEngine';
+import { getDaysInMonth, getMonthsRemainingInFY } from '../../utils/dateUtils';
 import PayrollOps_Initiate from './PayrollOps_Initiate';
 import PayrollOps_Review from './PayrollOps_Review';
 import PayrollOps_Tax from './PayrollOps_Tax';
@@ -93,6 +93,64 @@ export default function PayrollOpsTab() {
     setActivePayrun(prev => ({ ...prev, publishedSlips: empIds }));
   }, []);
 
+  // ── Auto-initialize parameters when payrun is selected or step changes ────────
+  useEffect(() => {
+    if (!activePayrun) return;
+
+    // 1. Auto-fill Days in Month and Months Remaining
+    const days = getDaysInMonth(activePayrun.month_year);
+    const monthsLeft = getMonthsRemainingInFY(activePayrun.month_year);
+
+    // 2. If moving to Tax step (step 2), fetch historical TDS if not already set
+    async function loadHistory() {
+      if (step !== 2) return;
+      
+      const newTaxOverrides = { ...(activePayrun.taxOverrides || {}) };
+      let changed = false;
+
+      for (const empId of activePayrun.employeeIds) {
+        const ov = newTaxOverrides[empId] || {};
+        
+        // Auto-set months remaining if not manually touched
+        if (ov.monthsRemaining === undefined) {
+          ov.monthsRemaining = monthsLeft;
+          changed = true;
+        }
+
+        // Fetch history if TDS deducted is still 0/undefined and not manually overridden
+        if (ov.tdsDeductedSoFar === undefined) {
+          try {
+            const history = await getEmployeeFYTaxHistory(empId, activePayrun.month_year);
+            ov.tdsDeductedSoFar = history;
+            changed = true;
+          } catch (e) {
+            console.error(`Failed to fetch tax history for ${empId}:`, e);
+          }
+        }
+        
+        newTaxOverrides[empId] = ov;
+      }
+
+      if (changed) {
+        setActivePayrun(prev => ({ ...prev, taxOverrides: newTaxOverrides }));
+      }
+    }
+
+    loadHistory();
+
+    // 3. Auto-fill daysInMonth in adjustments if not present
+    if (activePayrun.employeeIds.some(id => !activePayrun.adjustments?.[id]?.daysInMonth)) {
+      const newAdjs = { ...(activePayrun.adjustments || {}) };
+      activePayrun.employeeIds.forEach(id => {
+        if (!newAdjs[id]) newAdjs[id] = {};
+        if (newAdjs[id].daysInMonth === undefined) {
+          newAdjs[id].daysInMonth = days;
+        }
+      });
+      setActivePayrun(prev => ({ ...prev, adjustments: newAdjs }));
+    }
+  }, [activePayrun?.id, step]);
+
   // ── Get employees for current payrun ─────────────────────────────────────────
   const getPayrunEmployees = useCallback(() => {
     if (!activePayrun || !employees.length) return [];
@@ -110,12 +168,12 @@ export default function PayrollOpsTab() {
           empCode: e.emp_code, 
           salaryComponents: e.salary_structure || [], 
           dateOfJoining: e.date_of_joining,
-          bankName: e.bank_name,
-          accNumber: e.account_number,
-          ifsc: e.ifsc,
-          uan: e.uan,
-          ipNumber: e.ip_number,
-          pan: e.pan,
+          bankName: e.bank_info?.bank_name,
+          accNumber: e.bank_info?.account_no,
+          ifsc: e.bank_info?.ifsc,
+          uan: e.uan || '',
+          ipNumber: e.ip_number || '',
+          pan: e.pan || '',
           daysInMonth: adj.daysInMonth ?? 30,
           lopDays: adj.lopDays ?? 0,
           overtimeHours: adj.overtimeHours ?? 0,
@@ -123,8 +181,14 @@ export default function PayrollOpsTab() {
           leaveEncashmentDays: adj.leaveEncashmentDays ?? 0,
           arrearEntries: adj.arrearEntries ?? [],
           taxRegime: taxOv.taxRegime ?? e.tax_regime ?? 'new',
+          isMetro: taxOv.isMetro ?? e.is_metro ?? true,
           investments80C: taxOv.investments80C ?? 0,
           medical80D: taxOv.medical80D ?? 0,
+          nps80CCD1B: taxOv.nps80CCD1B ?? 0,
+          homeLoanInterest: taxOv.homeLoanInterest ?? 0,
+          deductions80GE: taxOv.deductions80GE ?? 0,
+          savingsInterest80TTA: taxOv.savingsInterest80TTA ?? 0,
+          ltaClaimed: taxOv.ltaClaimed ?? 0,
           monthlyRentPaid: taxOv.monthlyRentPaid ?? 0,
           tdsDeductedSoFar: taxOv.tdsDeductedSoFar ?? 0,
           monthsRemaining: taxOv.monthsRemaining ?? 12,
