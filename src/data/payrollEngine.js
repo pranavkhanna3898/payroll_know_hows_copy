@@ -134,7 +134,7 @@ export const evaluateTaxLiability = ({
     }
   }
 
-  return { taxableIncome, annualTax, taxFormulaDetail, calculatedHraExempt, hraFormulaString };
+  return { taxableIncome, annualTax, taxFormulaDetail, calculatedHraExempt, hraFormulaString, hraActual, hraRentExcess, hraCityLimit };
 };
 
 // ─── Core Payroll Computation ─────────────────────────────────────────────────
