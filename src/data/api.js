@@ -149,11 +149,11 @@ export async function savePayrunAdjustment(payrunId, employeeId, adjustments, co
 export async function getEmployeeFYTaxHistory(employeeId, monthLabel) {
   if (!supabase) throw new Error('Supabase client not initialized');
   
-  // 1. Get all published/completed payruns
+  // 1. Get all published/completed/confirmed payruns
   const { data: payruns, error: pError } = await supabase
     .from('payruns')
     .select('id, month_year')
-    .in('status', ['published', 'completed']);
+    .in('status', ['published', 'completed', 'confirmed']);
   
   if (pError) throw pError;
   if (!payruns || payruns.length === 0) return 0;
