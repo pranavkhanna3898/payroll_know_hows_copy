@@ -1,5 +1,5 @@
 import { useState, useCallback, useEffect } from 'react';
-import { getEmployees, getPayruns, createPayrun, updatePayrunStatus, getPayrunAdjustments, savePayrunAdjustment, getEmployeeFYTaxHistory, getEmployeeSubmissions } from '../../data/api';
+import { getEmployees, getPayruns, createPayrun, updatePayrunStatus, getPayrunAdjustments, savePayrunAdjustment, getEmployeeFYTaxHistory, getEmployeeSubmissions, deletePayrun } from '../../data/api';
 import { computeEmployeePayroll } from '../../data/payrollEngine';
 import { getDaysInMonth, getMonthsRemainingInFY, getFinancialYearRange } from '../../utils/dateUtils';
 import PayrollOps_Initiate from './PayrollOps_Initiate';
@@ -246,6 +246,17 @@ export default function PayrollOpsTab() {
   // ── Operations ────────────────────────────────────────────────────────────────
   const initiatePayrun = useCallback(async (month, year, selectedEmpIds) => {
     const monthLabel = new Date(year, month - 1, 1).toLocaleString('default', { month: 'long' }) + ' ' + year;
+    
+    // Check if an unconfirmed payrun already exists for this month
+    const existingDraft = payruns.find(p => p.month_year === monthLabel && p.status !== 'confirmed');
+    
+    if (existingDraft) {
+      if (confirm(`A draft payrun for ${monthLabel} already exists in your history. Would you like to resume it instead of creating a duplicate?`)) {
+        openPayrun(existingDraft);
+        return;
+      }
+    }
+
     try {
       const payrun = await createPayrun(monthLabel);
       // Construct the internal object structure the UI expects
@@ -266,7 +277,21 @@ export default function PayrollOpsTab() {
     } catch (e) {
       alert('Error initiating payrun: ' + e.message);
     }
-  }, []);
+  }, [payruns, openPayrun]);
+
+  const handleDeletePayrun = async (id) => {
+    if (!confirm('Are you certain you want to permanently delete this payrun? This cannot be undone.')) return;
+    try {
+      await deletePayrun(id);
+      setPayruns(prev => prev.filter(p => p.id !== id));
+      if (activePayrun && activePayrun.id === id) {
+        setActivePayrun(null);
+        setStep(0);
+      }
+    } catch (e) {
+      alert('Failed to delete payrun: ' + e.message);
+    }
+  };
 
   const confirmPayrun = useCallback(async () => {
     if (!activePayrun) return;
@@ -355,7 +380,7 @@ export default function PayrollOpsTab() {
       </div>
 
       <div className="ops-content">
-        {step === 0 && <PayrollOps_Initiate {...sharedProps} onOpenPayrun={openPayrun} onInitiate={initiatePayrun} />}
+        {step === 0 && <PayrollOps_Initiate {...sharedProps} onOpenPayrun={openPayrun} onInitiate={initiatePayrun} onDeletePayrun={handleDeletePayrun} />}
         {step === 1 && <PayrollOps_Review {...sharedProps} />}
         {step === 2 && <PayrollOps_Tax {...sharedProps} />}
         {step === 3 && <PayrollOps_Confirm {...sharedProps} onConfirm={confirmPayrun} />}

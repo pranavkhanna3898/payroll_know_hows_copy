@@ -13,7 +13,7 @@ const STATUS_COLORS = {
   slips_generated: { bg: '#d1fae5', color: '#065f46', label: 'Slips Generated' },
 };
 
-export default function PayrollOps_Initiate({ store, onInitiate, onOpenPayrun }) {
+export default function PayrollOps_Initiate({ store, onInitiate, onOpenPayrun, onDeletePayrun }) {
   const now = new Date();
   const [month, setMonth] = useState(now.getMonth() + 1);
   const [year, setYear] = useState(now.getFullYear());
@@ -155,7 +155,12 @@ export default function PayrollOps_Initiate({ store, onInitiate, onOpenPayrun })
                         <span style={{ background: sc.bg, color: sc.color, padding: '3px 10px', borderRadius: 12, fontSize: 11, fontWeight: 700 }}>{sc.label}</span>
                       </td>
                       <td style={{ padding: '10px 14px', borderBottom: '1px solid #f1f5f9' }}>
-                        <button onClick={() => onOpenPayrun(p)} style={{ padding: '5px 12px', background: '#e0e7ff', color: '#3730a3', border: 'none', borderRadius: 6, cursor: 'pointer', fontWeight: 600, fontSize: 12 }}>Open →</button>
+                        <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                          <button onClick={() => onOpenPayrun(p)} style={{ padding: '5px 12px', background: '#e0e7ff', color: '#3730a3', border: 'none', borderRadius: 6, cursor: 'pointer', fontWeight: 600, fontSize: 12 }}>Open →</button>
+                          {p.status !== 'confirmed' && (
+                            <button onClick={() => onDeletePayrun(p.id)} style={{ padding: '5px 8px', background: '#fee2e2', color: '#ef4444', border: 'none', borderRadius: 6, cursor: 'pointer', fontSize: 13, lineHeight: 1 }} title="Delete Draft">🗑️</button>
+                          )}
+                        </div>
                       </td>
                     </tr>
                   );

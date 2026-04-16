@@ -116,6 +116,14 @@ export async function updatePayrunStatus(id, status) {
   if (error) throw error;
 }
 
+export async function deletePayrun(id) {
+  if (!supabase) throw new Error('Supabase client not initialized');
+  // First manually delete adjustments to avoid foreign key orphaned records if ON DELETE CASCADE isn't enabled
+  await supabase.from('payrun_adjustments').delete().eq('payrun_id', id);
+  const { error } = await supabase.from('payruns').delete().eq('id', id);
+  if (error) throw error;
+}
+
 // --- Payrun Adjustments ---
 export async function getPayrunAdjustments(payrunId) {
   if (!supabase) throw new Error('Supabase client not initialized');
