@@ -300,7 +300,7 @@ export default function EmployeePortal() {
               {/* Column headers */}
               <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr 1.5fr', gap: 16, padding: '8px 12px', background: '#f8fafc', borderRadius: 8, marginBottom: 12, fontSize: 11, fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: 0.4 }}>
                 <div>Component</div>
-                <div style={{ textAlign: 'right' }}>Structure Limit /mo</div>
+                <div style={{ textAlign: 'right' }}>Allowed / Annum</div>
                 <div style={{ textAlign: 'right' }}>Claim Amount (₹)</div>
                 <div>Proof & Notes</div>
               </div>
@@ -312,7 +312,7 @@ export default function EmployeePortal() {
                   
                   const isAnnual = selectedEmp?.inputMode === 'annual';
                   const rawLimit = typeof comp.amount === 'number' ? comp.amount : Number(comp.amount) || 0;
-                  const limit    = isAnnual ? rawLimit / 12 : rawLimit;
+                  const limit    = isAnnual ? rawLimit : rawLimit * 12;
 
                   return (
                     <div key={comp.id} style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr 1.5fr', gap: 16, alignItems: 'start', padding: '16px', background: '#fafafa', borderRadius: 10, border: '1px solid #e2e8f0' }}>
@@ -331,7 +331,7 @@ export default function EmployeePortal() {
                       {/* Structure limit */}
                       <div style={{ textAlign: 'right', paddingTop: 4 }}>
                         <div style={{ fontWeight: 700, fontSize: 15, color: '#334155' }}>₹{fmtAmt(limit)}</div>
-                        <div style={{ fontSize: 10, color: '#94a3b8' }}>per month</div>
+                        <div style={{ fontSize: 10, color: '#94a3b8' }}>per annum</div>
                       </div>
 
                       {/* Claim amount */}
@@ -373,8 +373,8 @@ export default function EmployeePortal() {
                       / ₹{fmtAmt(reimbComponents.reduce((sum, c) => {
                         const isAnnual = selectedEmp?.inputMode === 'annual';
                         const raw = typeof c.amount === 'number' ? c.amount : Number(c.amount) || 0;
-                        return sum + (isAnnual ? raw / 12 : raw);
-                      }, 0))} eligible
+                        return sum + (isAnnual ? raw : raw * 12);
+                      }, 0))} eligible annually
                     </span>
                   </div>
                 </div>

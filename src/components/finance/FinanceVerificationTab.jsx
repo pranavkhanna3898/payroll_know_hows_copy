@@ -212,6 +212,10 @@ export default function FinanceVerificationTab() {
                         const compDetails = (activeEmp?.salary_structure || []).find(c => c.id === compId);
                         const compName = compDetails ? compDetails.name : 'Unknown Component';
                         
+                        const isAnnual = activeEmp?.inputMode === 'annual';
+                        const rawAmt = compDetails ? (typeof compDetails.amount === 'number' ? compDetails.amount : Number(compDetails.amount) || 0) : 0;
+                        const allowedAnnualLimit = isAnnual ? rawAmt : rawAmt * 12;
+                        
                         return (
                           <div key={compId} style={{ display: 'grid', gridTemplateColumns: 'minmax(120px, 1.5fr) 1fr 1fr', gap: 16, alignItems: 'center', padding: '12px 0', borderBottom: '1px dashed #e2e8f0' }}>
                             <div>
@@ -226,6 +230,9 @@ export default function FinanceVerificationTab() {
                             <div>
                               <div style={{ fontSize: 10, color: '#64748b', textTransform: 'uppercase', marginBottom: 2 }}>Declared Claim</div>
                               <div style={{ fontWeight: 600, color: '#64748b' }}>₹{Number(entry.amount || 0).toLocaleString()}</div>
+                              {allowedAnnualLimit > 0 && (
+                                <div style={{ fontSize: 10, color: '#059669', marginTop: 4, fontWeight: 700 }}>Allowed Annual: ₹{allowedAnnualLimit.toLocaleString()}</div>
+                              )}
                             </div>
                             <div>
                               <InputField label="Verified Allowable" value={verifiedData[compId]?.amount || ''} onChange={v => handleVerifiedChange(compId, { ...verifiedData[compId], amount: v })} />
