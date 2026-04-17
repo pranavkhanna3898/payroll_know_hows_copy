@@ -85,6 +85,8 @@ export default function EmployeePortal() {
 
   const selectedEmp = employees.find(e => e.id === selectedEmpId);
   const reimbComponents = (selectedEmp?.salary_structure || []).filter(c => c.type === 'reimbursement');
+  const engineEmp = selectedEmp ? { ...selectedEmp, salaryComponents: selectedEmp.salary_structure || [] } : null;
+  const engineCalc = engineEmp ? computeEmployeePayroll(engineEmp) : null;
 
   const windows = settings?.submissionWindows || { itDeclaration: {}, reimbursement: {} };
   const canSubmitDecl  = windows.itDeclaration?.enabled;
@@ -306,11 +308,6 @@ export default function EmployeePortal() {
                 <div>Proof & Notes</div>
               </div>
 
-              {(() => {
-                const engineEmp = selectedEmp ? { ...selectedEmp, salaryComponents: selectedEmp.salary_structure || [] } : null;
-                const engineCalc = engineEmp ? computeEmployeePayroll(engineEmp) : null;
-                
-                return (
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
                     {reimbComponents.map(comp => {
                       const entry    = reimburseForm[comp.id] || {};
