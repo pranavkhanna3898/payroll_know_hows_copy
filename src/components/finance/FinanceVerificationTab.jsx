@@ -202,6 +202,41 @@ export default function FinanceVerificationTab() {
                   </div>
                 )}
 
+                {activeSub.type === 'reimbursement_claim' && (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                    {Object.entries(data).length === 0 ? (
+                      <div style={{ padding: 20, color: '#64748b', textAlign: 'center' }}>No components submitted.</div>
+                    ) : (
+                      Object.entries(data).map(([compId, entry]) => {
+                        const activeEmp = employees.find(e => e.id === activeSub.employee_id);
+                        const compDetails = (activeEmp?.salary_structure || []).find(c => c.id === compId);
+                        const compName = compDetails ? compDetails.name : 'Unknown Component';
+                        
+                        return (
+                          <div key={compId} style={{ display: 'grid', gridTemplateColumns: 'minmax(120px, 1.5fr) 1fr 1fr', gap: 16, alignItems: 'center', padding: '12px 0', borderBottom: '1px dashed #e2e8f0' }}>
+                            <div>
+                              <div style={{ fontWeight: 600, fontSize: 13, color: '#1e293b' }}>{compName}</div>
+                              {entry.proofUrl ? (
+                                <a href={entry.proofUrl} target="_blank" rel="noopener noreferrer" style={{ fontSize: 11, color: '#3b82f6', textDecoration: 'none', display: 'inline-block', marginTop: 4 }}>📎 View Proof URL</a>
+                              ) : (
+                                <span style={{ fontSize: 11, color: '#94a3b8', display: 'block', marginTop: 4 }}>No proof attached</span>
+                              )}
+                              {entry.notes && <div style={{ fontSize: 11, color: '#64748b', marginTop: 4, fontStyle: 'italic' }}>Notes: {entry.notes}</div>}
+                            </div>
+                            <div>
+                              <div style={{ fontSize: 10, color: '#64748b', textTransform: 'uppercase', marginBottom: 2 }}>Declared Claim</div>
+                              <div style={{ fontWeight: 600, color: '#64748b' }}>₹{Number(entry.amount || 0).toLocaleString()}</div>
+                            </div>
+                            <div>
+                              <InputField label="Verified Allowable" value={verifiedData[compId]?.amount || ''} onChange={v => handleVerifiedChange(compId, { ...verifiedData[compId], amount: v })} />
+                            </div>
+                          </div>
+                        );
+                      })
+                    )}
+                  </div>
+                )}
+
                 <div style={{ marginTop: 24, display: 'flex', gap: 12, justifyContent: 'flex-end', background: '#f8fafc', padding: 16, borderRadius: 8 }}>
                   <button onClick={() => handleStatusUpdate(reviewingId, 'rejected')} 
                     style={{ padding: '8px 16px', background: 'white', border: '1px solid #ef4444', color: '#ef4444', borderRadius: 6, fontWeight: 600, cursor: 'pointer' }}>

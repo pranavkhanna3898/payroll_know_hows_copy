@@ -309,7 +309,10 @@ export default function EmployeePortal() {
                 {reimbComponents.map(comp => {
                   const entry    = reimburseForm[comp.id] || {};
                   const disabled = !canSubmitReimb || isReimbVerified;
-                  const limit    = typeof comp.amount === 'number' ? comp.amount : Number(comp.amount) || 0;
+                  
+                  const isAnnual = selectedEmp?.inputMode === 'annual';
+                  const rawLimit = typeof comp.amount === 'number' ? comp.amount : Number(comp.amount) || 0;
+                  const limit    = isAnnual ? rawLimit / 12 : rawLimit;
 
                   return (
                     <div key={comp.id} style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr 1.5fr', gap: 16, alignItems: 'start', padding: '16px', background: '#fafafa', borderRadius: 10, border: '1px solid #e2e8f0' }}>
@@ -367,7 +370,11 @@ export default function EmployeePortal() {
                   <div style={{ fontSize: 22, fontWeight: 800, color: '#0c4a6e' }}>
                     ₹{fmtAmt(reimbComponents.reduce((sum, c) => sum + (reimburseForm[c.id]?.amount || 0), 0))}
                     <span style={{ fontSize: 12, fontWeight: 400, color: '#0369a1', marginLeft: 8 }}>
-                      / ₹{fmtAmt(reimbComponents.reduce((sum, c) => sum + (typeof c.amount === 'number' ? c.amount : Number(c.amount) || 0), 0))} eligible
+                      / ₹{fmtAmt(reimbComponents.reduce((sum, c) => {
+                        const isAnnual = selectedEmp?.inputMode === 'annual';
+                        const raw = typeof c.amount === 'number' ? c.amount : Number(c.amount) || 0;
+                        return sum + (isAnnual ? raw / 12 : raw);
+                      }, 0))} eligible
                     </span>
                   </div>
                 </div>
