@@ -322,8 +322,8 @@ export const computeEmployeePayroll = (emp) => {
   const pfEmployer = pfEmployee;
   const esiEmployee = manualEsiInput > 0 ? manualEsiInput : (grossSalary <= 21000 ? grossSalary * 0.0075 : 0);
   const esiEmployer = grossSalary <= 21000 ? grossSalary * 0.0325 : 0;
-  const pt = manualPtInput > 0 ? manualPtInput : getPT(selectedState, grossSalary);
-  const lwf = manualLwfInput > 0 ? manualLwfInput : getLWF(selectedState);
+  const pt = manualPtInput > 0 ? manualPtInput : getPT(work_state, grossSalary);
+  const lwf = manualLwfInput > 0 ? manualLwfInput : getLWF(work_state);
 
   const totalDeductions = pfEmployee + esiEmployee + pt + lwf + tds + employeeDeductions;
   const netPay = grossSalary - totalDeductions + (reimbursementTaxStrategy === 'year_end' ? monthlyReimbursements : 0);
