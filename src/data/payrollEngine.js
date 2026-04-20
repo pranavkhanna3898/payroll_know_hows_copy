@@ -175,6 +175,9 @@ export const computeEmployeePayroll = (emp) => {
     ltaClaimed = 0,
     monthlyRentPaid = 0,
     tdsDeductedSoFar = 0,
+    ytdGross,
+    ytdBasic,
+    ytdHRA,
     monthsRemaining = 1,
   } = emp;
 
@@ -276,10 +279,13 @@ export const computeEmployeePayroll = (emp) => {
     (reimbursementTaxStrategy === 'monthly' ? monthlyReimbursements * attendanceFactor : 0);
 
   // ── TAX ────────────────────────────────────────────────────────────────────
-  const annualGross = standardGross * 11 + grossSalary;
+  const pastMonths = 12 - monthsRemaining;
+  const futureMonths = Math.max(0, monthsRemaining - 1);
+
+  const annualGross = (ytdGross !== undefined ? ytdGross : standardGross * pastMonths) + grossSalary + (standardGross * futureMonths);
   const annualRent = monthlyRentPaid * 12;
-  const projectedAnnualBasic = standardBasic * 11 + basic;
-  const projectedAnnualHRA = standardHRA * 11 + hra;
+  const projectedAnnualBasic = (ytdBasic !== undefined ? ytdBasic : standardBasic * pastMonths) + basic + (standardBasic * futureMonths);
+  const projectedAnnualHRA = (ytdHRA !== undefined ? ytdHRA : standardHRA * pastMonths) + hra + (standardHRA * futureMonths);
 
   const taxCalc = evaluateTaxLiability({
     annualGross,

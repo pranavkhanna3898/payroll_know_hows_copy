@@ -195,12 +195,22 @@ export async function getEmployeeFYTaxHistory(employeeId, monthLabel) {
 
   if (aError) throw aError;
   
-  // 5. Aggregate TDS from computed_data
-  const totalTDS = (adjs || []).reduce((sum, item) => {
-    return sum + (item.computed_data?.tds || 0);
-  }, 0);
+  // 5. Aggregate TDS and YTD data from computed_data
+  const history = {
+    tds: 0,
+    grossSalary: 0,
+    basic: 0,
+    hra: 0
+  };
 
-  return totalTDS;
+  (adjs || []).forEach(item => {
+    history.tds += (item.computed_data?.tds || 0);
+    history.grossSalary += (item.computed_data?.grossSalary || 0);
+    history.basic += (item.computed_data?.basic || 0);
+    history.hra += (item.computed_data?.hra || 0);
+  });
+
+  return history;
 }
 
 // --- Employee Submissions ---

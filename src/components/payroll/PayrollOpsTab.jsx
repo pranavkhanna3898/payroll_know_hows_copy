@@ -151,7 +151,10 @@ export default function PayrollOpsTab() {
         if (ov.tdsDeductedSoFar === undefined) {
           try {
             const history = await getEmployeeFYTaxHistory(empId, activePayrun.month_year);
-            ov.tdsDeductedSoFar = history;
+            ov.tdsDeductedSoFar = history.tds;
+            ov.ytdGross = history.grossSalary;
+            ov.ytdBasic = history.basic;
+            ov.ytdHRA = history.hra;
             taxChanged = true;
           } catch (e) {
             console.error(`Failed to fetch tax history for ${empId}:`, e);
@@ -230,6 +233,9 @@ export default function PayrollOpsTab() {
           ltaClaimed: taxOv.ltaClaimed ?? 0,
           monthlyRentPaid: taxOv.monthlyRentPaid ?? 0,
           tdsDeductedSoFar: taxOv.tdsDeductedSoFar ?? 0,
+          ytdGross: taxOv.ytdGross,
+          ytdBasic: taxOv.ytdBasic,
+          ytdHRA: taxOv.ytdHRA,
           monthsRemaining: taxOv.monthsRemaining ?? 12,
           inputMode: e.input_mode || 'monthly',
         };
