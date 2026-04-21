@@ -11,15 +11,78 @@ export const isMetroCity = (city) => {
 };
 
 // ─── Professional Tax ────────────────────────────────────────────────────────
-export const getPT = (st, gross) => {
-  if (st === 'KA') return gross >= 25000 ? 200 : 0;
-  if (st === 'MH') return gross >= 10000 ? 200 : (gross >= 7500 ? 175 : 0);
+export const getPT = (st, gross, payrollMonth = -1, ptHalfYearlyMode = 'lump_sum', dateOfJoining) => {
+  if (dateOfJoining && payrollMonth >= 0) {
+    const doj = new Date(dateOfJoining);
+    if (!isNaN(doj.getTime()) && doj.getFullYear() === new Date().getFullYear()) {
+      if (payrollMonth < doj.getMonth()) return 0;
+    }
+  }
+
+  const m = payrollMonth;
+  if (st === 'KA') {
+    const base = gross >= 25000 ? 200 : 0;
+    return (base === 200 && m === 1) ? 300 : base;
+  }
+  if (st === 'MH') {
+    if (gross >= 10000) return m === 1 ? 300 : 200;
+    if (gross >= 7500) return 175;
+    return 0;
+  }
+  if (st === 'MP') {
+    if (gross > 40000) return m === 2 ? 212 : 208;
+    if (gross > 30000) return 150;
+    return 0;
+  }
+  if (st === 'TN' || st === 'KL' || st === 'PY') {
+    let halfYearlyAmt = 0;
+    if (st === 'TN') {
+      if (gross > 75000) halfYearlyAmt = 1250;
+      else if (gross > 60000) halfYearlyAmt = 1025;
+      else if (gross > 45000) halfYearlyAmt = 690;
+      else if (gross > 30000) halfYearlyAmt = 315;
+      else if (gross > 21000) halfYearlyAmt = 135;
+    } else if (st === 'KL') {
+      if (gross > 124999) halfYearlyAmt = 1250;
+      else if (gross > 99999) halfYearlyAmt = 1000;
+      else if (gross > 74999) halfYearlyAmt = 750;
+      else if (gross > 59999) halfYearlyAmt = 600;
+      else if (gross > 44999) halfYearlyAmt = 450;
+      else if (gross > 29999) halfYearlyAmt = 300;
+      else if (gross > 17999) halfYearlyAmt = 180;
+      else if (gross >= 12000) halfYearlyAmt = 120;
+    } else if (st === 'PY') {
+      if (gross * 6 > 83000) halfYearlyAmt = 500;
+    }
+    if (ptHalfYearlyMode === 'lump_sum' && m !== -1) {
+      return (m === 2 || m === 8) ? halfYearlyAmt : 0;
+    }
+    return halfYearlyAmt / 6;
+  }
+  if (st === 'OD' || st === 'SK' || st === 'BR' || st === 'MZ') {
+    let annualAmt = 0;
+    if (st === 'OD') {
+      if (gross * 12 > 500000) annualAmt = 2500;
+      else if (gross * 12 > 300000) annualAmt = 1500;
+      else if (gross * 12 > 200000) annualAmt = 1000;
+    } else if (st === 'SK') {
+      if (gross > 30000) annualAmt = 200;
+      else if (gross > 20000) annualAmt = 125;
+    } else if (st === 'BR') {
+      if (gross * 12 > 500000) annualAmt = 2500;
+      else if (gross * 12 > 300000) annualAmt = 1000;
+    } else if (st === 'MZ') {
+      if (gross * 12 > 18000) annualAmt = 208;
+      else if (gross * 12 > 12000) annualAmt = 150;
+      else if (gross * 12 > 6000) annualAmt = 75;
+    }
+    if (m !== -1) return m === 5 ? annualAmt : 0;
+    return annualAmt / 12;
+  }
+
   if (st === 'WB') return gross > 40000 ? 200 : (gross > 25000 ? 150 : (gross > 15000 ? 130 : 0));
-  if (st === 'TN') return 208;
   if (st === 'GJ') return gross >= 12000 ? 200 : 0;
   if (st === 'AP' || st === 'TG') return gross > 20000 ? 200 : (gross > 15000 ? 150 : 0);
-  if (st === 'MP') return gross > 40000 ? 208 : (gross > 30000 ? 150 : 0);
-  if (st === 'OD') return gross > 40000 ? 200 : (gross > 25000 ? 150 : 0);
   if (st === 'JH') return gross > 60000 ? 208 : (gross > 40000 ? 150 : 0);
   if (st === 'AS') return gross > 25000 ? 208 : 0;
   if (['DL', 'RJ', 'HR', 'UP', 'PB', 'HP', 'UK', 'GA', 'CH'].includes(st)) return 0;
@@ -27,13 +90,23 @@ export const getPT = (st, gross) => {
 };
 
 // ─── Labour Welfare Fund ─────────────────────────────────────────────────────
-export const getLWF = (st) => {
-  if (st === 'KA') return 20;
-  if (st === 'MH') return 12;
-  if (st === 'WB') return 3;
-  if (st === 'TN') return 20;
-  if (st === 'GJ') return 6;
-  if (st === 'AP' || st === 'TG') return 30;
+export const getLWF = (st, payrollMonth = -1, dateOfJoining) => {
+  if (dateOfJoining && payrollMonth >= 0) {
+    const doj = new Date(dateOfJoining);
+    if (!isNaN(doj.getTime()) && doj.getFullYear() === new Date().getFullYear()) {
+      if (payrollMonth < doj.getMonth()) return 0;
+    }
+  }
+
+  const m = payrollMonth;
+  const isJuneOrDec = (m === 5 || m === 11);
+
+  if (st === 'KA') return (m !== -1 && !isJuneOrDec) ? 0 : 20;
+  if (st === 'MH') return (m !== -1 && !isJuneOrDec) ? 0 : 12;
+  if (st === 'WB') return (m !== -1 && m !== 6) ? 0 : 3;
+  if (st === 'TN') return (m !== -1 && m !== 0) ? 0 : 20;
+  if (st === 'GJ') return (m !== -1 && !isJuneOrDec) ? 0 : 6;
+  if (st === 'AP' || st === 'TG') return (m !== -1 && m !== 5) ? 0 : 30;
   if (['DL', 'RJ', 'HR', 'UP', 'PB', 'HP', 'UK', 'GA', 'CH'].includes(st)) return 0;
   return 25;
 };
@@ -179,6 +252,9 @@ export const computeEmployeePayroll = (emp) => {
     ytdBasic,
     ytdHRA,
     monthsRemaining = 1,
+    payrollMonth = -1,
+    dateOfJoining,
+    ptHalfYearlyMode = 'lump_sum',
   } = emp;
 
   const components = salaryComponents.map(c => ({ ...c })); // shallow clone to avoid mutation
@@ -222,8 +298,8 @@ export const computeEmployeePayroll = (emp) => {
       else c._resolved = Math.min(1800, tempBasic * 0.12);
     } else if (c.matrixId === 'esi_ee') c._resolved = tempGross <= 21000 ? tempGross * 0.0075 : 0;
     else if (c.matrixId === 'esi_er') c._resolved = tempGross <= 21000 ? tempGross * 0.0325 : 0;
-    else if (c.matrixId === 'pt') c._resolved = getPT(work_state, tempGross);
-    else if (c.matrixId === 'lwf_ee') c._resolved = getLWF(work_state);
+    else if (c.matrixId === 'pt') c._resolved = getPT(work_state, tempGross, payrollMonth, ptHalfYearlyMode, dateOfJoining);
+    else if (c.matrixId === 'lwf_ee') c._resolved = getLWF(work_state, payrollMonth, dateOfJoining);
   });
 
   // ── FINAL ACCUMULATION ────────────────────────────────────────────────────
@@ -269,11 +345,33 @@ export const computeEmployeePayroll = (emp) => {
 
   // ── ARREARS ────────────────────────────────────────────────────────────────
   let arrearsPay = 0;
+  const arrearsBreakup = [];
+
   (arrearEntries || []).forEach(entry => {
     const base = entry.historicalGross || standardGross;
-    const divisor = entry.monthDays || 30;
+    const divisor = entry.monthDays || daysInMonth || 30;
     arrearsPay += (base / divisor) * entry.arrearDays;
   });
+
+  if (arrearsPay > 0) {
+    let totalEarningComps = 0;
+    components.forEach(c => {
+      if (['earnings_basic','earnings_hra','earnings_allowance'].includes(c.type)) {
+        totalEarningComps += (c._resolved || 0);
+      }
+    });
+
+    if (totalEarningComps > 0) {
+      components.forEach(c => {
+        if (['earnings_basic','earnings_hra','earnings_allowance'].includes(c.type)) {
+          const prop = (c._resolved || 0) / totalEarningComps;
+          if (prop > 0) arrearsBreakup.push({ name: `${c.name} (Arrear)`, amount: arrearsPay * prop });
+        }
+      });
+    } else {
+      arrearsBreakup.push({ name: 'Arrears (Fixed)', amount: arrearsPay });
+    }
+  }
 
   const grossSalary = basic + hra + special + overtimePay + arrearsPay + leaveEncashmentPay + variablePay +
     (reimbursementTaxStrategy === 'monthly' ? monthlyReimbursements * attendanceFactor : 0);
@@ -328,8 +426,8 @@ export const computeEmployeePayroll = (emp) => {
   const pfEmployer = pfEmployee;
   const esiEmployee = manualEsiInput > 0 ? manualEsiInput : (grossSalary <= 21000 ? grossSalary * 0.0075 : 0);
   const esiEmployer = grossSalary <= 21000 ? grossSalary * 0.0325 : 0;
-  const pt = manualPtInput > 0 ? manualPtInput : getPT(work_state, grossSalary);
-  const lwf = manualLwfInput > 0 ? manualLwfInput : getLWF(work_state);
+  const pt = manualPtInput > 0 ? manualPtInput : getPT(work_state, grossSalary, payrollMonth, ptHalfYearlyMode, dateOfJoining);
+  const lwf = manualLwfInput > 0 ? manualLwfInput : getLWF(work_state, payrollMonth, dateOfJoining);
 
   const totalDeductions = pfEmployee + esiEmployee + pt + lwf + tds + employeeDeductions;
   const netPay = grossSalary - totalDeductions + (reimbursementTaxStrategy === 'year_end' ? monthlyReimbursements : 0);
@@ -358,5 +456,6 @@ export const computeEmployeePayroll = (emp) => {
     pfEmployee, pfEmployer, pfEps, pfErShare,
     esiEmployee, esiEmployer, pt, lwf,
     totalDeductions, netPay,
+    arrearsBreakup,
   };
 };

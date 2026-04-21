@@ -14,7 +14,7 @@ const TYPE_COLORS = {
 
 const MONTHS_MAP = { 'January': 31, 'February (Regular)': 28, 'February (Leap)': 29, 'March': 31, 'April': 30, 'May': 31, 'June': 30, 'July': 31, 'August': 31, 'September': 30, 'October': 31, 'November': 30, 'December': 31 };
 
-function EmpDetailPane({ emp, activePayrun, updateAdjustment, onClose }) {
+function EmpDetailPane({ emp, activePayrun, updateAdjustment, companySettings, onClose }) {
   const { computed: c, id } = emp;
   const adj = activePayrun.adjustments[id] || {};
 
@@ -36,6 +36,11 @@ function EmpDetailPane({ emp, activePayrun, updateAdjustment, onClose }) {
       if (a.id !== arrId) return a;
       const updated = { ...a, [field]: field === 'monthName' ? val : Number(val) };
       if (field === 'monthName') updated.monthDays = MONTHS_MAP[val] || 30;
+      
+      // Clamp arrear days
+      const maxDays = updated.monthDays || 30;
+      if (updated.arrearDays > maxDays) updated.arrearDays = maxDays;
+      
       return updated;
     });
     updateAdj('arrearEntries', entries);
@@ -183,6 +188,20 @@ function EmpDetailPane({ emp, activePayrun, updateAdjustment, onClose }) {
                 </div>
               ))}
             </div>
+
+            {companySettings?.arrearDisplayMode === 'breakup' && c.arrearsPay > 0 && c.arrearsBreakup && (
+              <div style={{ marginTop: 16, paddingTop: 16, borderTop: '1px dashed rgba(255,255,255,0.2)' }}>
+                <div style={{ fontSize: 11, color: '#a78bfa', textTransform: 'uppercase', marginBottom: 8, fontWeight: 700 }}>Arrears Component Breakup</div>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))', gap: 12 }}>
+                  {c.arrearsBreakup.map((bk, i) => (
+                    <div key={i} style={{ background: 'rgba(139,92,246,0.1)', padding: '8px 12px', borderRadius: 6, border: '1px solid rgba(139,92,246,0.2)' }}>
+                      <div style={{ fontSize: 10, color: '#d8b4fe', marginBottom: 2 }}>{bk.name}</div>
+                      <div style={{ fontSize: 14, fontWeight: 700, color: '#fff', fontFamily: 'monospace' }}>₹{fmt(bk.amount)}</div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         </div>
       </div>
@@ -190,7 +209,7 @@ function EmpDetailPane({ emp, activePayrun, updateAdjustment, onClose }) {
   );
 }
 
-export default function PayrollOps_Review({ payrunEmployees, activePayrun, updateAdjustment, onNext, onBack }) {
+export default function PayrollOps_Review({ payrunEmployees, activePayrun, updateAdjustment, companySettings, onNext, onBack }) {
   const [selectedEmp, setSelectedEmp] = useState(null);
   const fmt = v => Math.round(v || 0).toLocaleString('en-IN');
 
@@ -255,7 +274,7 @@ export default function PayrollOps_Review({ payrunEmployees, activePayrun, updat
       </div>
 
       {selectedEmp && (
-        <EmpDetailPane emp={selectedEmp} activePayrun={activePayrun} updateAdjustment={updateAdjustment} onClose={() => setSelectedEmp(null)} />
+        <EmpDetailPane emp={selectedEmp} activePayrun={activePayrun} updateAdjustment={updateAdjustment} companySettings={companySettings} onClose={() => setSelectedEmp(null)} />
       )}
     </div>
   );

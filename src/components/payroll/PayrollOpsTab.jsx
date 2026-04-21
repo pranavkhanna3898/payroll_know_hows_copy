@@ -1,5 +1,5 @@
 import { useState, useCallback, useEffect } from 'react';
-import { getEmployees, getPayruns, createPayrun, updatePayrunStatus, getPayrunAdjustments, savePayrunAdjustment, getEmployeeFYTaxHistory, getEmployeeSubmissions, deletePayrun } from '../../data/api';
+import { getEmployees, getPayruns, createPayrun, updatePayrunStatus, getPayrunAdjustments, savePayrunAdjustment, getEmployeeFYTaxHistory, getEmployeeSubmissions, deletePayrun, getCompanySettings } from '../../data/api';
 import { computeEmployeePayroll } from '../../data/payrollEngine';
 import { getDaysInMonth, getMonthsRemainingInFY, getFinancialYearRange } from '../../utils/dateUtils';
 import PayrollOps_Initiate from './PayrollOps_Initiate';
@@ -22,15 +22,17 @@ export default function PayrollOpsTab() {
   const [activePayrun, setActivePayrun] = useState(null); 
   const [loading, setLoading] = useState(true);
   const [step, setStep] = useState(0);
+  const [companySettings, setCompanySettings] = useState(null);
 
   // ── Initial Load ─────────────────────────────────────────────────────────────
   useEffect(() => {
     async function init() {
       setLoading(true);
       try {
-        const [empData, payrunData] = await Promise.all([getEmployees(), getPayruns()]);
+        const [empData, payrunData, settingsData] = await Promise.all([getEmployees(), getPayruns(), getCompanySettings()]);
         setEmployees(empData || []);
         setPayruns(payrunData || []);
+        setCompanySettings(settingsData || {});
       } catch (e) {
         console.error('Failed to load payroll data:', e);
       }
@@ -192,6 +194,14 @@ export default function PayrollOpsTab() {
   const getPayrunEmployees = useCallback(() => {
     if (!activePayrun || !employees.length) return [];
     
+    const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+    let payrollMonthIndex = -1;
+    if (activePayrun.monthLabel || activePayrun.month_year) {
+       const str = activePayrun.monthLabel || activePayrun.month_year;
+       const match = str.split(' ')[0];
+       payrollMonthIndex = monthNames.findIndex(m => m.startsWith(match));
+    }
+    
     return employees
       .filter(e => activePayrun.employeeIds.includes(e.id))
       .map(e => {
@@ -238,6 +248,8 @@ export default function PayrollOpsTab() {
           ytdHRA: taxOv.ytdHRA,
           monthsRemaining: taxOv.monthsRemaining ?? 12,
           inputMode: e.input_mode || 'monthly',
+          payrollMonth: payrollMonthIndex,
+          ptHalfYearlyMode: companySettings?.ptHalfYearlyMode || 'lump_sum',
         };
 
         // Inject variable payouts into components
@@ -250,7 +262,7 @@ export default function PayrollOpsTab() {
 
         return { ...engineEmp, computed: computeEmployeePayroll(engineEmp) };
       });
-  }, [activePayrun, employees]);
+  }, [activePayrun, employees, companySettings]);
 
   // ── Operations ────────────────────────────────────────────────────────────────
   const openPayrun = useCallback(async (payrun) => {
@@ -383,6 +395,7 @@ export default function PayrollOpsTab() {
   const sharedProps = {
     store, activePayrun, payrunEmployees,
     updateAdjustment, updateTaxOverride, toggleSlip, publishAll,
+    companySettings,
     onNext: () => setStep(s => Math.min(4, s + 1)),
     onBack: () => setStep(s => Math.max(0, s - 1)),
   };

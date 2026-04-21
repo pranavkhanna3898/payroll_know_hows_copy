@@ -34,6 +34,7 @@ const DEFAULTS = {
     { state: 'KA', regNo: 'PT/KA/12345', frequency: 'Monthly' },
   ],
   ptLiabilityMonth: 'Disbursement', // Disbursement | Accrual
+  ptHalfYearlyMode: 'lump_sum', // lump_sum (deduct in Sept/Mar) | prorate (deduct monthly)
 
   // Labour Welfare Fund
   lwfStateRegistrations: [
@@ -58,6 +59,7 @@ const DEFAULTS = {
   lopCalculationMethod: 'calendar', // calendar | working | pay_period
   prorationType: 'dynamic',      // dynamic | fixed30
   autoLockAfterDisbursement: true,
+  arrearDisplayMode: 'consolidated', // consolidated | breakup
 
   // Bank Integration
   bankName: 'HDFC Bank',

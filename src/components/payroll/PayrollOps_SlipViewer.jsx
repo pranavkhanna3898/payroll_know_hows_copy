@@ -3,7 +3,7 @@ import * as XLSX from 'xlsx';
 
 const fmt = v => Math.round(v || 0).toLocaleString('en-IN');
 
-function SalarySlip({ emp, monthLabel }) {
+function SalarySlip({ emp, monthLabel, companySettings }) {
   const c = emp.computed;
   const today = new Date();
   const earningComps = emp.salaryComponents.filter(ct => ['earnings_basic','earnings_hra','earnings_allowance','variable'].includes(ct.type));
@@ -97,13 +97,24 @@ function SalarySlip({ emp, monthLabel }) {
                 <td style={{ padding: '7px 20px', borderBottom: '1px solid #f1f5f9', textAlign: 'right', fontFamily: 'monospace', color: '#b45309' }}>₹{fmt(c.variablePay)}</td>
               </tr>}
               {c.overtimePay > 0 && <tr>
+              {c.overtimePay > 0 && <tr>
                 <td style={{ padding: '7px 20px', borderBottom: '1px solid #f1f5f9', color: '#0891b2' }}>Overtime Pay</td>
                 <td style={{ padding: '7px 20px', borderBottom: '1px solid #f1f5f9', textAlign: 'right', fontFamily: 'monospace' }}>₹{fmt(c.overtimePay)}</td>
               </tr>}
-              {c.arrearsPay > 0 && <tr>
-                <td style={{ padding: '7px 20px', borderBottom: '1px solid #f1f5f9', color: '#7c3aed' }}>Arrears</td>
-                <td style={{ padding: '7px 20px', borderBottom: '1px solid #f1f5f9', textAlign: 'right', fontFamily: 'monospace' }}>₹{fmt(c.arrearsPay)}</td>
-              </tr>}
+
+              {companySettings?.arrearDisplayMode === 'breakup' && c.arrearsBreakup && c.arrearsBreakup.length > 0 ? (
+                c.arrearsBreakup.map((bk, i) => (
+                  <tr key={`arr_${i}`}>
+                    <td style={{ padding: '7px 20px', borderBottom: '1px solid #f1f5f9', color: '#7c3aed' }}>{bk.name}</td>
+                    <td style={{ padding: '7px 20px', borderBottom: '1px solid #f1f5f9', textAlign: 'right', fontFamily: 'monospace' }}>₹{fmt(bk.amount)}</td>
+                  </tr>
+                ))
+              ) : (
+                c.arrearsPay > 0 && <tr>
+                  <td style={{ padding: '7px 20px', borderBottom: '1px solid #f1f5f9', color: '#7c3aed' }}>Arrears</td>
+                  <td style={{ padding: '7px 20px', borderBottom: '1px solid #f1f5f9', textAlign: 'right', fontFamily: 'monospace' }}>₹{fmt(c.arrearsPay)}</td>
+                </tr>
+              )}
             </tbody>
             <tfoot>
               <tr style={{ background: '#dcfce7' }}>
@@ -175,7 +186,7 @@ function SalarySlip({ emp, monthLabel }) {
   );
 }
 
-export default function PayrollOps_SlipViewer({ payrunEmployees, activePayrun, toggleSlip, publishAll, onBack, onComplete }) {
+export default function PayrollOps_SlipViewer({ payrunEmployees, activePayrun, toggleSlip, publishAll, companySettings, onBack, onComplete }) {
   const [selectedEmp, setSelectedEmp] = useState(payrunEmployees[0] || null);
   const monthLabel = activePayrun?.monthLabel || 'Current Month';
   const publishedSlips = activePayrun?.publishedSlips || [];
@@ -281,7 +292,7 @@ export default function PayrollOps_SlipViewer({ payrunEmployees, activePayrun, t
                 </button>
               </div>
               <div id="salary-slip-print">
-                <SalarySlip emp={selectedEmp} monthLabel={monthLabel} />
+                <SalarySlip emp={selectedEmp} monthLabel={monthLabel} companySettings={companySettings} />
               </div>
             </>
           ) : (

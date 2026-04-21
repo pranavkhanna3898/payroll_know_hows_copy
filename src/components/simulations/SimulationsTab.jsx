@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { getEmployees } from '../../data/api';
+import { getEmployees, getCompanySettings } from '../../data/api';
 // ... existing imports ...
 import Step0_SalaryBreakdown from './Step0_SalaryBreakdown';
 import Step1_Salary from './Step1_Salary';
@@ -18,6 +18,11 @@ export default function SimulationsTab() {
 
   useEffect(() => {
     getEmployees().then(setEmployees).catch(console.error);
+    getCompanySettings().then(s => {
+      if (s?.ptHalfYearlyMode) {
+        setData(prev => ({ ...prev, ptHalfYearlyMode: s.ptHalfYearlyMode }));
+      }
+    }).catch(console.error);
   }, []);
 
   const loadEmployee = (empId) => {
@@ -80,6 +85,8 @@ export default function SimulationsTab() {
     epfCalculationMethod: 'prorated_ceiling',
     tdsDeductedSoFar: 0,
     monthsRemaining: 1,
+    payrollMonth: new Date().getMonth(),
+    ptHalfYearlyMode: 'lump_sum',
 
     // Step 3/4/5 Inputs
     empName: "John Doe",

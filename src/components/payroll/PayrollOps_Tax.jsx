@@ -13,7 +13,7 @@ const Field = ({ label, children, hint }) => (
   </div>
 );
 
-function TaxCard({ emp, activePayrun, updateTaxOverride }) {
+function TaxCard({ emp, activePayrun, updateTaxOverride, companySettings }) {
   const [expanded, setExpanded] = useState(false);
   const { computed: c, id } = emp;
   const ov = activePayrun?.taxOverrides?.[id] || {};
@@ -37,16 +37,16 @@ function TaxCard({ emp, activePayrun, updateTaxOverride }) {
         </div>
         <div style={{ display: 'flex', gap: 20, alignItems: 'center' }}>
           <div style={{ textAlign: 'right' }}>
-            <div style={{ fontSize: 10, color: '#64748b', textTransform: 'uppercase' }}>Annual Tax</div>
-            <div style={{ fontFamily: 'monospace', fontWeight: 700, color: '#0f172a' }}>₹{fmt(c.annualTax)}</div>
+            <div style={{ fontSize: 10, color: '#64748b', textTransform: 'uppercase' }}>YTD Tax</div>
+            <div style={{ fontFamily: 'monospace', fontWeight: 700, color: '#0f172a' }}>₹{fmt(field('tdsDeductedSoFar'))}</div>
+          </div>
+          <div style={{ textAlign: 'right' }}>
+            <div style={{ fontSize: 10, color: '#64748b', textTransform: 'uppercase' }}>Projected Annual Tax</div>
+            <div style={{ fontFamily: 'monospace', fontWeight: 700, color: '#dc2626' }}>₹{fmt(c.annualTax)}</div>
           </div>
           <div style={{ textAlign: 'right' }}>
             <div style={{ fontSize: 10, color: '#64748b', textTransform: 'uppercase' }}>Monthly TDS</div>
-            <div style={{ fontFamily: 'monospace', fontWeight: 700, color: '#dc2626' }}>₹{fmt(c.tds)}</div>
-          </div>
-          <div style={{ textAlign: 'right' }}>
-            <div style={{ fontSize: 10, color: '#64748b', textTransform: 'uppercase' }}>Taxable Income</div>
-            <div style={{ fontFamily: 'monospace', fontWeight: 600, color: '#7c3aed' }}>₹{fmt(c.taxableIncome)}</div>
+            <div style={{ fontFamily: 'monospace', fontWeight: 600, color: '#7c3aed' }}>₹{fmt(c.tds)}</div>
           </div>
           <span style={{ fontSize: 18, color: '#94a3b8' }}>{expanded ? '▲' : '▼'}</span>
         </div>
@@ -156,6 +156,14 @@ function TaxCard({ emp, activePayrun, updateTaxOverride }) {
                 <div style={{ fontFamily: 'monospace', color: '#64748b', lineHeight: 1.7 }}>
                   Base Projection: ₹{fmt(c.standardGross * 11)}<br/>
                   Current Month Actual: ₹{fmt(c.grossSalary)}<br/>
+                  {companySettings?.arrearDisplayMode === 'breakup' && c.arrearsPay > 0 && c.arrearsBreakup && (
+                    <div style={{ margin: '4px 0', paddingLeft: 8, borderLeft: '2px solid #cbd5e1', fontSize: 11 }}>
+                      Arrears Breakup (Total: ₹{fmt(c.arrearsPay)}):<br/>
+                      {c.arrearsBreakup.map((bk, i) => (
+                        <div key={i}>{bk.name}: ₹{fmt(bk.amount)}</div>
+                      ))}
+                    </div>
+                  )}
                   <span style={{ color: '#1e40af', fontWeight: 700 }}>Projected Annual Gross = ₹{fmt(c.annualGross)}</span>
                 </div>
               </div>
@@ -219,7 +227,7 @@ function TaxCard({ emp, activePayrun, updateTaxOverride }) {
   );
 }
 
-export default function PayrollOps_Tax({ payrunEmployees, activePayrun, updateTaxOverride, onNext, onBack }) {
+export default function PayrollOps_Tax({ payrunEmployees, activePayrun, updateTaxOverride, companySettings, onNext, onBack }) {
   const totalTax = payrunEmployees.reduce((s, e) => s + (e.computed.annualTax || 0), 0);
   const totalTDS = payrunEmployees.reduce((s, e) => s + (e.computed.tds || 0), 0);
 
@@ -241,7 +249,7 @@ export default function PayrollOps_Tax({ payrunEmployees, activePayrun, updateTa
 
       {/* Per-employee Tax Cards */}
       {payrunEmployees.map(emp => (
-        <TaxCard key={emp.id} emp={emp} activePayrun={activePayrun} updateTaxOverride={updateTaxOverride} />
+        <TaxCard key={emp.id} emp={emp} activePayrun={activePayrun} updateTaxOverride={updateTaxOverride} companySettings={companySettings} />
       ))}
 
       <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 24 }}>
