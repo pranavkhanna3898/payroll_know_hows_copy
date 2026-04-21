@@ -164,7 +164,7 @@ export async function getEmployeeFYTaxHistory(employeeId, monthLabel) {
     .in('status', ['published', 'completed', 'confirmed']);
   
   if (pError) throw pError;
-  if (!payruns || payruns.length === 0) return 0;
+  if (!payruns || payruns.length === 0) return { tds: 0, grossSalary: 0, basic: 0, hra: 0 };
 
   // 2. Identify current FY start (April)
   const [monthName, yearStr] = monthLabel.split(' ');
@@ -184,7 +184,7 @@ export async function getEmployeeFYTaxHistory(employeeId, monthLabel) {
     return pDate >= fyStartDate && pDate < currentDate;
   }).map(p => p.id);
 
-  if (fyPayrunIds.length === 0) return 0;
+  if (fyPayrunIds.length === 0) return { tds: 0, grossSalary: 0, basic: 0, hra: 0 };
 
   // 4. Fetch adjustments for these payruns
   const { data: adjs, error: aError } = await supabase

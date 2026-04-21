@@ -11,7 +11,20 @@ export const isMetroCity = (city) => {
 };
 
 // ─── Professional Tax ────────────────────────────────────────────────────────
-export const getPT = (st, gross, payrollMonth = -1, ptHalfYearlyMode = 'lump_sum', dateOfJoining) => {
+const isEmployeeEligibleForPayrollMonth = (dateOfJoining, payrollMonth = -1, payrollYear) => {
+  if (!dateOfJoining || payrollMonth < 0) return true;
+  const doj = new Date(dateOfJoining);
+  if (isNaN(doj.getTime())) return true;
+  const year = Number.isFinite(Number(payrollYear)) ? Number(payrollYear) : new Date().getFullYear();
+  const payrollStart = new Date(year, payrollMonth, 1);
+  return payrollStart >= new Date(doj.getFullYear(), doj.getMonth(), 1);
+};
+
+export const getPT = (st, gross, payrollMonth = -1, ptHalfYearlyMode = 'lump_sum', dateOfJoining, payrollYear) => {
+  if (!isEmployeeEligibleForPayrollMonth(dateOfJoining, payrollMonth, payrollYear)) {
+    return 0;
+  }
+
   if (dateOfJoining && payrollMonth >= 0) {
     const doj = new Date(dateOfJoining);
     if (!isNaN(doj.getTime()) && doj.getFullYear() === new Date().getFullYear()) {
@@ -90,12 +103,9 @@ export const getPT = (st, gross, payrollMonth = -1, ptHalfYearlyMode = 'lump_sum
 };
 
 // ─── Labour Welfare Fund ─────────────────────────────────────────────────────
-export const getLWF = (st, payrollMonth = -1, dateOfJoining) => {
-  if (dateOfJoining && payrollMonth >= 0) {
-    const doj = new Date(dateOfJoining);
-    if (!isNaN(doj.getTime()) && doj.getFullYear() === new Date().getFullYear()) {
-      if (payrollMonth < doj.getMonth()) return 0;
-    }
+export const getLWF = (st, payrollMonth = -1, dateOfJoining, payrollYear) => {
+  if (!isEmployeeEligibleForPayrollMonth(dateOfJoining, payrollMonth, payrollYear)) {
+    return 0;
   }
 
   const m = payrollMonth;
@@ -253,6 +263,7 @@ export const computeEmployeePayroll = (emp) => {
     ytdHRA,
     monthsRemaining = 1,
     payrollMonth = -1,
+    payrollYear,
     dateOfJoining,
     ptHalfYearlyMode = 'lump_sum',
   } = emp;
@@ -298,8 +309,8 @@ export const computeEmployeePayroll = (emp) => {
       else c._resolved = Math.min(1800, tempBasic * 0.12);
     } else if (c.matrixId === 'esi_ee') c._resolved = tempGross <= 21000 ? tempGross * 0.0075 : 0;
     else if (c.matrixId === 'esi_er') c._resolved = tempGross <= 21000 ? tempGross * 0.0325 : 0;
-    else if (c.matrixId === 'pt') c._resolved = getPT(work_state, tempGross, payrollMonth, ptHalfYearlyMode, dateOfJoining);
-    else if (c.matrixId === 'lwf_ee') c._resolved = getLWF(work_state, payrollMonth, dateOfJoining);
+    else if (c.matrixId === 'pt') c._resolved = getPT(work_state, tempGross, payrollMonth, ptHalfYearlyMode, dateOfJoining, payrollYear);
+    else if (c.matrixId === 'lwf_ee') c._resolved = getLWF(work_state, payrollMonth, dateOfJoining, payrollYear);
   });
 
   // ── FINAL ACCUMULATION ────────────────────────────────────────────────────
@@ -346,11 +357,25 @@ export const computeEmployeePayroll = (emp) => {
   // ── ARREARS ────────────────────────────────────────────────────────────────
   let arrearsPay = 0;
   const arrearsBreakup = [];
+  const arrearsValidation = [];
+  const attendedDaysCap = Math.max(0, daysInMonth - lopDays);
 
   (arrearEntries || []).forEach(entry => {
     const base = entry.historicalGross || standardGross;
     const divisor = entry.monthDays || daysInMonth || 30;
-    arrearsPay += (base / divisor) * entry.arrearDays;
+    const maxEligibleDays = Math.max(0, Math.min(divisor, attendedDaysCap));
+    const requestedDays = Math.max(0, Number(entry.arrearDays) || 0);
+    const acceptedDays = Math.min(requestedDays, maxEligibleDays);
+    if (requestedDays > acceptedDays) {
+      arrearsValidation.push({
+        id: entry.id,
+        monthName: entry.monthName,
+        requestedDays,
+        acceptedDays,
+        maxEligibleDays,
+      });
+    }
+    arrearsPay += (base / divisor) * acceptedDays;
   });
 
   if (arrearsPay > 0) {
@@ -377,8 +402,17 @@ export const computeEmployeePayroll = (emp) => {
     (reimbursementTaxStrategy === 'monthly' ? monthlyReimbursements * attendanceFactor : 0);
 
   // ── TAX ────────────────────────────────────────────────────────────────────
-  const pastMonths = 12 - monthsRemaining;
-  const futureMonths = Math.max(0, monthsRemaining - 1);
+  const monthBasedMonthsRemaining = payrollMonth >= 0
+    ? (payrollMonth >= 3 ? (15 - payrollMonth) : (3 - payrollMonth))
+    : null;
+  const effectiveMonthsRemaining = Number.isFinite(Number(monthsRemaining)) && Number(monthsRemaining) > 0
+    ? Number(monthsRemaining)
+    : (monthBasedMonthsRemaining || 1);
+
+  const pastMonths = payrollMonth >= 0
+    ? (payrollMonth >= 3 ? (payrollMonth - 3) : (payrollMonth + 9))
+    : Math.max(0, 12 - effectiveMonthsRemaining);
+  const futureMonths = Math.max(0, effectiveMonthsRemaining - 1);
 
   const annualGross = (ytdGross !== undefined ? ytdGross : standardGross * pastMonths) + grossSalary + (standardGross * futureMonths);
   const annualRent = monthlyRentPaid * 12;
@@ -410,7 +444,7 @@ export const computeEmployeePayroll = (emp) => {
     hraActual, hraRentExcess, hraCityLimit
   } = taxCalc;
   const remainingTax = Math.max(0, annualTax - tdsDeductedSoFar);
-  const tds = monthsRemaining > 0 ? remainingTax / monthsRemaining : 0;
+  const tds = effectiveMonthsRemaining > 0 ? remainingTax / effectiveMonthsRemaining : 0;
 
   // ── EPF / ESIC / PT / LWF ─────────────────────────────────────────────────
   let pfEmployee = 0;
@@ -426,8 +460,8 @@ export const computeEmployeePayroll = (emp) => {
   const pfEmployer = pfEmployee;
   const esiEmployee = manualEsiInput > 0 ? manualEsiInput : (grossSalary <= 21000 ? grossSalary * 0.0075 : 0);
   const esiEmployer = grossSalary <= 21000 ? grossSalary * 0.0325 : 0;
-  const pt = manualPtInput > 0 ? manualPtInput : getPT(work_state, grossSalary, payrollMonth, ptHalfYearlyMode, dateOfJoining);
-  const lwf = manualLwfInput > 0 ? manualLwfInput : getLWF(work_state, payrollMonth, dateOfJoining);
+  const pt = manualPtInput > 0 ? manualPtInput : getPT(work_state, grossSalary, payrollMonth, ptHalfYearlyMode, dateOfJoining, payrollYear);
+  const lwf = manualLwfInput > 0 ? manualLwfInput : getLWF(work_state, payrollMonth, dateOfJoining, payrollYear);
 
   const totalDeductions = pfEmployee + esiEmployee + pt + lwf + tds + employeeDeductions;
   const netPay = grossSalary - totalDeductions + (reimbursementTaxStrategy === 'year_end' ? monthlyReimbursements : 0);
@@ -456,6 +490,6 @@ export const computeEmployeePayroll = (emp) => {
     pfEmployee, pfEmployer, pfEps, pfErShare,
     esiEmployee, esiEmployer, pt, lwf,
     totalDeductions, netPay,
-    arrearsBreakup,
+    arrearsBreakup, arrearsValidation,
   };
 };

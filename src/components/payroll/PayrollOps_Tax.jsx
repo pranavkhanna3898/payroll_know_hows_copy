@@ -2,6 +2,12 @@ import { useState } from 'react';
 import { isMetroCity } from '../../data/payrollEngine';
 
 const fmt = v => Math.round(v || 0).toLocaleString('en-IN');
+const shouldShowArrearBreakup = (settings, section) => {
+  if (settings?.arrearDisplayMode !== 'breakup') return false;
+  const visibleIn = settings?.arrearBreakupVisibility;
+  if (!Array.isArray(visibleIn) || visibleIn.length === 0) return true;
+  return visibleIn.includes(section);
+};
 
 const Field = ({ label, children, hint }) => (
   <div style={{ flex: 1 }}>
@@ -156,7 +162,7 @@ function TaxCard({ emp, activePayrun, updateTaxOverride, companySettings }) {
                 <div style={{ fontFamily: 'monospace', color: '#64748b', lineHeight: 1.7 }}>
                   Base Projection: ₹{fmt(c.standardGross * 11)}<br/>
                   Current Month Actual: ₹{fmt(c.grossSalary)}<br/>
-                  {companySettings?.arrearDisplayMode === 'breakup' && c.arrearsPay > 0 && c.arrearsBreakup && (
+                  {shouldShowArrearBreakup(companySettings, 'tax') && c.arrearsPay > 0 && c.arrearsBreakup && (
                     <div style={{ margin: '4px 0', paddingLeft: 8, borderLeft: '2px solid #cbd5e1', fontSize: 11 }}>
                       Arrears Breakup (Total: ₹{fmt(c.arrearsPay)}):<br/>
                       {c.arrearsBreakup.map((bk, i) => (

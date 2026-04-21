@@ -13,6 +13,12 @@ const TYPE_COLORS = {
 };
 
 const MONTHS_MAP = { 'January': 31, 'February (Regular)': 28, 'February (Leap)': 29, 'March': 31, 'April': 30, 'May': 31, 'June': 30, 'July': 31, 'August': 31, 'September': 30, 'October': 31, 'November': 30, 'December': 31 };
+const shouldShowArrearBreakup = (settings, section) => {
+  if (settings?.arrearDisplayMode !== 'breakup') return false;
+  const visibleIn = settings?.arrearBreakupVisibility;
+  if (!Array.isArray(visibleIn) || visibleIn.length === 0) return true;
+  return visibleIn.includes(section);
+};
 
 function EmpDetailPane({ emp, activePayrun, updateAdjustment, companySettings, onClose }) {
   const { computed: c, id } = emp;
@@ -37,8 +43,9 @@ function EmpDetailPane({ emp, activePayrun, updateAdjustment, companySettings, o
       const updated = { ...a, [field]: field === 'monthName' ? val : Number(val) };
       if (field === 'monthName') updated.monthDays = MONTHS_MAP[val] || 30;
       
-      // Clamp arrear days
-      const maxDays = updated.monthDays || 30;
+      // Clamp arrear days by month-days and paid-days
+      const paidDays = Math.max(0, (adj.daysInMonth ?? emp.daysInMonth ?? 30) - (adj.lopDays ?? emp.lopDays ?? 0));
+      const maxDays = Math.max(0, Math.min(updated.monthDays || 30, paidDays));
       if (updated.arrearDays > maxDays) updated.arrearDays = maxDays;
       
       return updated;
@@ -189,7 +196,15 @@ function EmpDetailPane({ emp, activePayrun, updateAdjustment, companySettings, o
               ))}
             </div>
 
-            {companySettings?.arrearDisplayMode === 'breakup' && c.arrearsPay > 0 && c.arrearsBreakup && (
+            {c.arrearsValidation?.length > 0 && (
+              <div style={{ marginTop: 12, padding: 10, borderRadius: 8, border: '1px solid rgba(251,191,36,0.5)', background: 'rgba(251,191,36,0.12)' }}>
+                <div style={{ fontSize: 11, color: '#fde68a', fontWeight: 700, marginBottom: 6 }}>Arrear days were auto-clamped for payroll compliance</div>
+                <div style={{ fontSize: 11, color: '#fef3c7', lineHeight: 1.5 }}>
+                  {c.arrearsValidation.map(v => `${v.monthName || 'Selected Month'}: ${v.requestedDays} requested, ${v.acceptedDays} accepted`).join(' | ')}
+                </div>
+              </div>
+            )}
+            {shouldShowArrearBreakup(companySettings, 'review') && c.arrearsPay > 0 && c.arrearsBreakup && (
               <div style={{ marginTop: 16, paddingTop: 16, borderTop: '1px dashed rgba(255,255,255,0.2)' }}>
                 <div style={{ fontSize: 11, color: '#a78bfa', textTransform: 'uppercase', marginBottom: 8, fontWeight: 700 }}>Arrears Component Breakup</div>
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))', gap: 12 }}>

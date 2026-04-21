@@ -249,6 +249,7 @@ export default function PayrollOpsTab() {
           monthsRemaining: taxOv.monthsRemaining ?? 12,
           inputMode: e.input_mode || 'monthly',
           payrollMonth: payrollMonthIndex,
+          payrollYear: activePayrun.year || Number((activePayrun.month_year || '').split(' ')[1]) || new Date().getFullYear(),
           ptHalfYearlyMode: companySettings?.ptHalfYearlyMode || 'lump_sum',
         };
 

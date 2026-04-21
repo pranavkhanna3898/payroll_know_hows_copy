@@ -2,6 +2,12 @@ import { useState } from 'react';
 import * as XLSX from 'xlsx';
 
 const fmt = v => Math.round(v || 0).toLocaleString('en-IN');
+const shouldShowArrearBreakup = (settings, section) => {
+  if (settings?.arrearDisplayMode !== 'breakup') return false;
+  const visibleIn = settings?.arrearBreakupVisibility;
+  if (!Array.isArray(visibleIn) || visibleIn.length === 0) return true;
+  return visibleIn.includes(section);
+};
 
 function SalarySlip({ emp, monthLabel, companySettings }) {
   const c = emp.computed;
@@ -97,12 +103,11 @@ function SalarySlip({ emp, monthLabel, companySettings }) {
                 <td style={{ padding: '7px 20px', borderBottom: '1px solid #f1f5f9', textAlign: 'right', fontFamily: 'monospace', color: '#b45309' }}>₹{fmt(c.variablePay)}</td>
               </tr>}
               {c.overtimePay > 0 && <tr>
-              {c.overtimePay > 0 && <tr>
                 <td style={{ padding: '7px 20px', borderBottom: '1px solid #f1f5f9', color: '#0891b2' }}>Overtime Pay</td>
                 <td style={{ padding: '7px 20px', borderBottom: '1px solid #f1f5f9', textAlign: 'right', fontFamily: 'monospace' }}>₹{fmt(c.overtimePay)}</td>
               </tr>}
 
-              {companySettings?.arrearDisplayMode === 'breakup' && c.arrearsBreakup && c.arrearsBreakup.length > 0 ? (
+              {shouldShowArrearBreakup(companySettings, 'slip') && c.arrearsBreakup && c.arrearsBreakup.length > 0 ? (
                 c.arrearsBreakup.map((bk, i) => (
                   <tr key={`arr_${i}`}>
                     <td style={{ padding: '7px 20px', borderBottom: '1px solid #f1f5f9', color: '#7c3aed' }}>{bk.name}</td>

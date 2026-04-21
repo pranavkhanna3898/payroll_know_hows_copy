@@ -60,6 +60,7 @@ const DEFAULTS = {
   prorationType: 'dynamic',      // dynamic | fixed30
   autoLockAfterDisbursement: true,
   arrearDisplayMode: 'consolidated', // consolidated | breakup
+  arrearBreakupVisibility: ['review', 'tax', 'slip'], // where breakup is shown
 
   // Bank Integration
   bankName: 'HDFC Bank',

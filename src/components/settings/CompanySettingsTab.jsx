@@ -526,6 +526,50 @@ function PayrollCycleSettings({ s, update }) {
           </select>
         </Field>
       </Grid>
+      <div style={{ marginTop: 16, paddingTop: 16, borderTop: '1px solid #e2e8f0' }}>
+        <div style={{ fontSize: 12, fontWeight: 700, color: '#334155', marginBottom: 10 }}>Arrear Display Preferences</div>
+        <Grid cols={2}>
+          <Field label="Arrear Display Mode">
+            <select value={s.arrearDisplayMode || 'consolidated'} onChange={e => update('arrearDisplayMode', e.target.value)} style={{ padding: '8px 12px', border: '1px solid #cbd5e1', borderRadius: 6, fontSize: 13, outline: 'none' }}>
+              <option value="consolidated">Consolidated arrears only</option>
+              <option value="breakup">Component-wise arrear breakup</option>
+            </select>
+          </Field>
+          <Field label="Show Breakup In" hint="Applicable only in breakup mode">
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+              {[
+                ['review', 'Review & Adjust'],
+                ['tax', 'TDS Calculation'],
+                ['slip', 'Salary Slip'],
+              ].map(([key, label]) => {
+                const arr = Array.isArray(s.arrearBreakupVisibility) ? s.arrearBreakupVisibility : ['review', 'tax', 'slip'];
+                const active = arr.includes(key);
+                return (
+                  <button
+                    key={key}
+                    onClick={() => {
+                      const next = active ? arr.filter(v => v !== key) : [...arr, key];
+                      update('arrearBreakupVisibility', next.length ? next : ['review', 'tax', 'slip']);
+                    }}
+                    style={{
+                      padding: '6px 10px',
+                      borderRadius: 8,
+                      border: `1px solid ${active ? '#4f46e5' : '#cbd5e1'}`,
+                      background: active ? '#eef2ff' : 'white',
+                      color: active ? '#3730a3' : '#64748b',
+                      fontSize: 12,
+                      fontWeight: 600,
+                      cursor: 'pointer',
+                    }}
+                  >
+                    {active ? '✓ ' : ''}{label}
+                  </button>
+                );
+              })}
+            </div>
+          </Field>
+        </Grid>
+      </div>
     </SectionCard>
   );
 }
