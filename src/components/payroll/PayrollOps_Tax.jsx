@@ -160,8 +160,9 @@ function TaxCard({ emp, activePayrun, updateTaxOverride, companySettings }) {
               <div style={{ background: '#f8fafc', borderRadius: 8, padding: '12px 14px', fontSize: 12 }}>
                 <div style={{ fontWeight: 700, color: '#475569', marginBottom: 6 }}>① Annualization of Gross</div>
                 <div style={{ fontFamily: 'monospace', color: '#64748b', lineHeight: 1.7 }}>
-                  Base Projection: ₹{fmt(c.standardGross * 11)}<br/>
+                  {c.pastMonths > 0 && <span>Past Salary (YTD): ₹{fmt(c.ytdGross !== undefined ? c.ytdGross : c.standardGross * c.pastMonths)} ({c.pastMonths} months)<br/></span>}
                   Current Month Actual: ₹{fmt(c.grossSalary)}<br/>
+                  {c.futureMonths > 0 && <span>Future Projection: ₹{fmt(c.standardGross * c.futureMonths)} ({c.futureMonths} months)<br/></span>}
                   {shouldShowArrearBreakup(companySettings, 'tax') && c.arrearsPay > 0 && c.arrearsBreakup && (
                     <div style={{ margin: '4px 0', paddingLeft: 8, borderLeft: '2px solid #cbd5e1', fontSize: 11 }}>
                       Arrears Breakup (Total: ₹{fmt(c.arrearsPay)}):<br/>

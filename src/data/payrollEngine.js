@@ -486,6 +486,7 @@ export const computeEmployeePayroll = (emp) => {
     taxFormulaDetail, calculatedHraExempt, hraFormulaString,
     hraActual, hraRentExcess, hraCityLimit,
     annualRent, projectedAnnualBasic, projectedAnnualHRA,
+    pastMonths, futureMonths, ytdGross,
     // Deductions
     pfEmployee, pfEmployer, pfEps, pfErShare,
     esiEmployee, esiEmployer, pt, lwf,
