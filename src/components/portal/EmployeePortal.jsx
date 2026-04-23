@@ -232,10 +232,16 @@ export default function EmployeePortal() {
                   <div style={{ display: 'flex', gap: 10 }}>
                     <NumberInput value={declForm[key]} onChange={v => handleDeclChange(key, v)} disabled={!canSubmitDecl || isDeclVerified} />
                     <label style={{ display: 'flex', alignItems: 'center', gap: 6, background: '#f8fafc', borderRadius: 6, padding: '0 10px', border: '1px solid #e2e8f0', cursor: !canSubmitDecl || isDeclVerified ? 'not-allowed' : 'pointer', whiteSpace: 'nowrap', fontSize: 12, color: '#475569' }}>
-                      📎 {reimburseFiles[key] ? reimburseFiles[key].name.substring(0, 14) + '…' : 'Attach Proof'}
+                      📎 {declFiles[key] ? declFiles[key].name.substring(0, 14) + '…' : 'Attach Proof'}
                       <input type="file" style={{ display: 'none' }} onChange={e => handleDeclFileChange(key, e)} disabled={!canSubmitDecl || isDeclVerified} />
                     </label>
                   </div>
+                  {key === 'medical80D_parents' && (
+                    <label style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 6, cursor: !canSubmitDecl || isDeclVerified ? 'not-allowed' : 'pointer', fontSize: 11, color: '#64748b' }}>
+                      <input type="checkbox" disabled={!canSubmitDecl || isDeclVerified} checked={!!declForm.medical80D_parents_senior} onChange={e => handleDeclChange('medical80D_parents_senior', e.target.checked)} />
+                      Parents are Senior Citizens (Unlocks ₹50k limit)
+                    </label>
+                  )}
                 </Field>
               ))}
             </div>
