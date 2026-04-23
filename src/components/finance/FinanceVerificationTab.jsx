@@ -213,10 +213,8 @@ export default function FinanceVerificationTab() {
                         const compDetails = (activeEmp?.salary_structure || []).find(c => c.id === compId);
                         const compName = compDetails ? compDetails.name : 'Unknown Component';
                         
-                        const engineEmp = activeEmp ? { ...activeEmp, salaryComponents: activeEmp.salary_structure || [] } : null;
-                        const engineCalc = engineEmp ? computeEmployeePayroll(engineEmp) : null;
-                        const computedComp = engineCalc?.components?.find(c => c.id === compId);
-                        const allowedAnnualLimit = computedComp ? (computedComp._resolved * 12) : 0;
+                        const rawAmount = Number(compDetails?.amount || 0);
+                        const allowedAnnualLimit = activeEmp?.input_mode === 'monthly' ? rawAmount * 12 : rawAmount;
                         
                         return (
                           <div key={compId} style={{ display: 'grid', gridTemplateColumns: 'minmax(120px, 1.5fr) 1fr 1fr', gap: 16, alignItems: 'center', padding: '12px 0', borderBottom: '1px dashed #e2e8f0' }}>

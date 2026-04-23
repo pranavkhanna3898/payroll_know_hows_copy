@@ -313,8 +313,8 @@ export default function EmployeePortal() {
                       const entry    = reimburseForm[comp.id] || {};
                       const disabled = !canSubmitReimb || isReimbVerified;
                       
-                      const computedComp = engineCalc?.components?.find(c => c.id === comp.id);
-                      const limit = computedComp ? (computedComp._resolved * 12) : 0;
+                      const rawAmount = Number(comp.amount || 0);
+                      const limit = selectedEmp?.input_mode === 'monthly' ? rawAmount * 12 : rawAmount;
 
                       return (
                     <div key={comp.id} style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr 1.5fr', gap: 16, alignItems: 'start', padding: '16px', background: '#fafafa', borderRadius: 10, border: '1px solid #e2e8f0' }}>
@@ -373,8 +373,8 @@ export default function EmployeePortal() {
                     ₹{fmtAmt(reimbComponents.reduce((sum, c) => sum + (reimburseForm[c.id]?.amount || 0), 0))}
                     <span style={{ fontSize: 12, fontWeight: 400, color: '#0369a1', marginLeft: 8 }}>
                       / ₹{fmtAmt(reimbComponents.reduce((sum, c) => {
-                        const computedComp = engineCalc?.components?.find(x => x.id === c.id);
-                        return sum + (computedComp ? computedComp._resolved * 12 : 0);
+                        const rawAmount = Number(c.amount || 0);
+                        return sum + (selectedEmp?.input_mode === 'monthly' ? rawAmount * 12 : rawAmount);
                       }, 0))} eligible annually
                     </span>
                   </div>

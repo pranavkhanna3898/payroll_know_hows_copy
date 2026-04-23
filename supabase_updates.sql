@@ -21,3 +21,8 @@ ALTER TABLE employees
   ADD COLUMN IF NOT EXISTS work_city TEXT,
   ADD COLUMN IF NOT EXISTS base_state TEXT,
   ADD COLUMN IF NOT EXISTS base_city TEXT;
+
+-- Add Exit Lifecycle columns to employees
+ALTER TABLE employees
+  ADD COLUMN IF NOT EXISTS exit_date DATE,
+  ADD COLUMN IF NOT EXISTS exit_reason TEXT;
