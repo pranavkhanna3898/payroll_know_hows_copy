@@ -6,16 +6,25 @@ function ReportDetail({ emp }) {
   const c = emp.computed;
 
   // Earnings mapping
-  const actualBasic = c.basic || 0;
-  const projBasic = c.projectedAnnualBasic || 0;
+  const ytdBasic = c.ytdBasic !== undefined ? c.ytdBasic : c.standardBasic * c.pastMonths;
+  const ytdHRA = c.ytdHRA !== undefined ? c.ytdHRA : c.standardHRA * c.pastMonths;
+  const ytdGross = c.ytdGross !== undefined ? c.ytdGross : c.standardGross * c.pastMonths;
+  const ytdOthers = ytdGross - ytdBasic - ytdHRA;
 
-  const actualHRA = c.hra || 0;
-  const projHRA = c.projectedAnnualHRA || 0;
+  const curBasic = c.basic || 0;
+  const curHRA = c.hra || 0;
+  const curGross = c.grossSalary || 0;
+  const curOthers = curGross - curBasic - curHRA;
 
-  // Aggregate the rest into "Allowances & Others"
-  // Note: c.grossSalary includes basic, hra, special, overtimePay, arrearsPay, leaveEncashmentPay, variablePay
-  const actualOthers = c.grossSalary - actualBasic - actualHRA;
-  const projOthers = c.annualGross - projBasic - projHRA;
+  const futBasic = c.standardBasic * c.futureMonths;
+  const futHRA = c.standardHRA * c.futureMonths;
+  const futGross = c.standardGross * c.futureMonths;
+  const futOthers = futGross - futBasic - futHRA;
+
+  const totalBasic = c.projectedAnnualBasic || 0;
+  const totalHRA = c.projectedAnnualHRA || 0;
+  const totalGross = c.annualGross || 0;
+  const totalOthers = totalGross - totalBasic - totalHRA;
 
   return (
     <div style={{ fontFamily: "'Inter', sans-serif", background: 'white', borderRadius: 12, border: '1px solid #e2e8f0', overflow: 'hidden', boxShadow: '0 4px 12px rgba(0,0,0,0.05)' }}>
@@ -38,31 +47,41 @@ function ReportDetail({ emp }) {
         <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13, marginBottom: 32 }}>
           <thead>
             <tr style={{ background: '#f1f5f9' }}>
-              <th style={{ padding: '8px 12px', textAlign: 'left', fontWeight: 600, color: '#475569', borderRadius: '6px 0 0 6px' }}>Salary Head</th>
-              <th style={{ padding: '8px 12px', textAlign: 'right', fontWeight: 600, color: '#475569' }}>Actual (Month)</th>
-              <th style={{ padding: '8px 12px', textAlign: 'right', fontWeight: 600, color: '#475569', borderRadius: '0 6px 6px 0' }}>Projected (Annual)</th>
+              <th style={{ padding: '8px 12px', textAlign: 'left', fontWeight: 600, color: '#475569', borderRadius: '6px 0 0 6px' }}>Component</th>
+              <th style={{ padding: '8px 12px', textAlign: 'right', fontWeight: 600, color: '#475569' }}>Actual Earning (YTD)</th>
+              <th style={{ padding: '8px 12px', textAlign: 'right', fontWeight: 600, color: '#475569' }}>Current Month Actual</th>
+              <th style={{ padding: '8px 12px', textAlign: 'right', fontWeight: 600, color: '#475569' }}>Projected Earning</th>
+              <th style={{ padding: '8px 12px', textAlign: 'right', fontWeight: 600, color: '#475569', borderRadius: '0 6px 6px 0' }}>Total Earning</th>
             </tr>
           </thead>
           <tbody>
             <tr>
               <td style={{ padding: '10px 12px', borderBottom: '1px solid #f1f5f9', fontWeight: 500, color: '#334155' }}>Basic Salary</td>
-              <td style={{ padding: '10px 12px', borderBottom: '1px solid #f1f5f9', textAlign: 'right', fontFamily: 'monospace' }}>₹{fmt(actualBasic)}</td>
-              <td style={{ padding: '10px 12px', borderBottom: '1px solid #f1f5f9', textAlign: 'right', fontFamily: 'monospace' }}>₹{fmt(projBasic)}</td>
+              <td style={{ padding: '10px 12px', borderBottom: '1px solid #f1f5f9', textAlign: 'right', fontFamily: 'monospace' }}>₹{fmt(ytdBasic)}</td>
+              <td style={{ padding: '10px 12px', borderBottom: '1px solid #f1f5f9', textAlign: 'right', fontFamily: 'monospace' }}>₹{fmt(curBasic)}</td>
+              <td style={{ padding: '10px 12px', borderBottom: '1px solid #f1f5f9', textAlign: 'right', fontFamily: 'monospace' }}>₹{fmt(futBasic)}</td>
+              <td style={{ padding: '10px 12px', borderBottom: '1px solid #f1f5f9', textAlign: 'right', fontFamily: 'monospace' }}>₹{fmt(totalBasic)}</td>
             </tr>
             <tr>
               <td style={{ padding: '10px 12px', borderBottom: '1px solid #f1f5f9', fontWeight: 500, color: '#334155' }}>House Rent Allowance (HRA)</td>
-              <td style={{ padding: '10px 12px', borderBottom: '1px solid #f1f5f9', textAlign: 'right', fontFamily: 'monospace' }}>₹{fmt(actualHRA)}</td>
-              <td style={{ padding: '10px 12px', borderBottom: '1px solid #f1f5f9', textAlign: 'right', fontFamily: 'monospace' }}>₹{fmt(projHRA)}</td>
+              <td style={{ padding: '10px 12px', borderBottom: '1px solid #f1f5f9', textAlign: 'right', fontFamily: 'monospace' }}>₹{fmt(ytdHRA)}</td>
+              <td style={{ padding: '10px 12px', borderBottom: '1px solid #f1f5f9', textAlign: 'right', fontFamily: 'monospace' }}>₹{fmt(curHRA)}</td>
+              <td style={{ padding: '10px 12px', borderBottom: '1px solid #f1f5f9', textAlign: 'right', fontFamily: 'monospace' }}>₹{fmt(futHRA)}</td>
+              <td style={{ padding: '10px 12px', borderBottom: '1px solid #f1f5f9', textAlign: 'right', fontFamily: 'monospace' }}>₹{fmt(totalHRA)}</td>
             </tr>
             <tr>
               <td style={{ padding: '10px 12px', borderBottom: '1px solid #f1f5f9', fontWeight: 500, color: '#334155' }}>Special Allowances & Others</td>
-              <td style={{ padding: '10px 12px', borderBottom: '1px solid #f1f5f9', textAlign: 'right', fontFamily: 'monospace' }}>₹{fmt(actualOthers)}</td>
-              <td style={{ padding: '10px 12px', borderBottom: '1px solid #f1f5f9', textAlign: 'right', fontFamily: 'monospace' }}>₹{fmt(projOthers)}</td>
+              <td style={{ padding: '10px 12px', borderBottom: '1px solid #f1f5f9', textAlign: 'right', fontFamily: 'monospace' }}>₹{fmt(ytdOthers)}</td>
+              <td style={{ padding: '10px 12px', borderBottom: '1px solid #f1f5f9', textAlign: 'right', fontFamily: 'monospace' }}>₹{fmt(curOthers)}</td>
+              <td style={{ padding: '10px 12px', borderBottom: '1px solid #f1f5f9', textAlign: 'right', fontFamily: 'monospace' }}>₹{fmt(futOthers)}</td>
+              <td style={{ padding: '10px 12px', borderBottom: '1px solid #f1f5f9', textAlign: 'right', fontFamily: 'monospace' }}>₹{fmt(totalOthers)}</td>
             </tr>
             <tr style={{ background: '#f8fafc', fontWeight: 700 }}>
               <td style={{ padding: '10px 12px', color: '#0f172a' }}>Total Gross Salary</td>
-              <td style={{ padding: '10px 12px', textAlign: 'right', fontFamily: 'monospace', color: '#0f172a' }}>₹{fmt(c.grossSalary)}</td>
-              <td style={{ padding: '10px 12px', textAlign: 'right', fontFamily: 'monospace', color: '#0f172a' }}>₹{fmt(c.annualGross)}</td>
+              <td style={{ padding: '10px 12px', textAlign: 'right', fontFamily: 'monospace', color: '#0f172a' }}>₹{fmt(ytdGross)}</td>
+              <td style={{ padding: '10px 12px', textAlign: 'right', fontFamily: 'monospace', color: '#0f172a' }}>₹{fmt(curGross)}</td>
+              <td style={{ padding: '10px 12px', textAlign: 'right', fontFamily: 'monospace', color: '#0f172a' }}>₹{fmt(futGross)}</td>
+              <td style={{ padding: '10px 12px', textAlign: 'right', fontFamily: 'monospace', color: '#0f172a' }}>₹{fmt(totalGross)}</td>
             </tr>
           </tbody>
         </table>
