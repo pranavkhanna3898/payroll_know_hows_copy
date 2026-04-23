@@ -42,6 +42,8 @@ export default function SimulationsTab() {
       work_city: emp.work_city || 'Bengaluru',
       base_state: emp.base_state || 'KA',
       base_city: emp.base_city || 'Bengaluru',
+      exit_date: emp.exit_date || '',
+      exit_reason: emp.exit_reason || '',
       // Reset variables that are simulation specific
       lopDays: 0,
       overtimeHours: 0,
@@ -62,6 +64,8 @@ export default function SimulationsTab() {
     overtimeHours: 0,
     otRate: 500,
     leaveEncashmentDays: 0,
+    exit_date: '',
+    exit_reason: '',
     arrearEntries: [],
 
     work_state: 'KA',

@@ -136,6 +136,17 @@ function ReportDetail({ emp }) {
 
         {/* SECTION 3: Tax Computation */}
         <h4 style={{ fontSize: 13, fontWeight: 700, color: '#334155', textTransform: 'uppercase', marginBottom: 12, letterSpacing: 0.5, borderBottom: '2px solid #e2e8f0', paddingBottom: 6 }}>3. Tax Liability Output</h4>
+        
+        {c.engineValidations && c.engineValidations.length > 0 && (
+          <div style={{ marginBottom: 16 }}>
+            {c.engineValidations.map((msg, i) => (
+              <div key={i} style={{ padding: 12, borderRadius: 6, background: '#fef2f2', border: '1px solid #fca5a5', color: '#b91c1c', fontSize: 13, fontWeight: 500, display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+                <span>⚠️</span> {msg}
+              </div>
+            ))}
+          </div>
+        )}
+
         <div style={{ background: '#eff6ff', borderRadius: 8, border: '1px solid #bfdbfe', padding: 16 }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
             <div style={{ fontSize: 13, color: '#1e3a8a', fontWeight: 500 }}>Implied Annual Tax</div>

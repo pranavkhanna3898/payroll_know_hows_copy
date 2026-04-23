@@ -109,7 +109,9 @@ function EmployeeManagement({ settings }) {
       salary_structure: JSON.parse(JSON.stringify(settings.defaultSalaryComponents || [])),
       input_mode: settings.defaultInputMode || 'monthly',
       bank_info: { bank_name: '', account_no: '', ifsc: '' },
-      is_active: true
+      is_active: true,
+      exit_date: null,
+      exit_reason: ''
     });
   }
 
@@ -159,6 +161,28 @@ const convertStructure = (structure, toAnnual) => {
                 style={{ padding: '8px 12px', border: '1px solid #cbd5e1', borderRadius: 6, fontSize: 13, width: '100%' }}>
                 <option value="true">Active</option>
                 <option value="false">Inactive</option>
+              </select>
+            </Field>
+          </Grid>
+        </SectionCard>
+
+        <SectionCard title="Employment Lifecycle" icon="🚪">
+          <Grid cols={3}>
+            <Field label="Exit Date (Optional)">
+              <input 
+                type="date" 
+                value={editingEmp.exit_date || ''} 
+                onChange={e => setEditingEmp({...editingEmp, exit_date: e.target.value})} 
+                style={{ padding: '8px 12px', border: '1px solid #cbd5e1', borderRadius: 6, fontSize: 13, width: '100%' }}
+              />
+            </Field>
+            <Field label="Exit Reason">
+              <select value={editingEmp.exit_reason || ''} onChange={e => setEditingEmp({...editingEmp, exit_reason: e.target.value})}
+                style={{ padding: '8px 12px', border: '1px solid #cbd5e1', borderRadius: 6, fontSize: 13, width: '100%' }}>
+                <option value="">None / Active</option>
+                <option value="Resignation">Resignation</option>
+                <option value="Termination">Termination</option>
+                <option value="Retirement">Retirement (Superannuation)</option>
               </select>
             </Field>
           </Grid>

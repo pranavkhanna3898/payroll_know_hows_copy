@@ -139,6 +139,7 @@ export const evaluateTaxLiability = ({
   projectedAnnualBasic = 0,
   projectedAnnualHRA = 0,
   annualRent = 0,
+  leaveEncashmentExempt = 0,
 }) => {
   // --- Standard Capping Logic ---
   const capped80C = Math.min(150000, investments80C);
@@ -171,7 +172,7 @@ export const evaluateTaxLiability = ({
     }
 
     // Total Deductions (Old Regime)
-    const totalDeductions = capped80C + capped80D + cappedNPS + cappedHomeLoan + deductions80GE + savingsInterest80TTA + ltaClaimed + 50000 + calculatedHraExempt;
+    const totalDeductions = capped80C + capped80D + cappedNPS + cappedHomeLoan + deductions80GE + savingsInterest80TTA + ltaClaimed + 50000 + calculatedHraExempt + leaveEncashmentExempt;
     taxableIncome = Math.max(0, annualGross - totalDeductions);
 
     let baseTax = 0;
@@ -193,7 +194,7 @@ export const evaluateTaxLiability = ({
       taxFormulaDetail = `${taxFormulaDetail} = ₹${Math.round(baseTax).toLocaleString()} + 4% Cess`;
     }
   } else {
-    taxableIncome = Math.max(0, annualGross - 75000);
+    taxableIncome = Math.max(0, annualGross - 75000 - leaveEncashmentExempt);
     let baseTax = 0;
     if (taxableIncome > 2400000) {
       baseTax = 300000 + (taxableIncome - 2400000) * 0.3;
@@ -266,6 +267,8 @@ export const computeEmployeePayroll = (emp) => {
     payrollYear,
     dateOfJoining,
     ptHalfYearlyMode = 'lump_sum',
+    exit_date,
+    exit_reason
   } = emp;
 
   const components = salaryComponents.map(c => ({ ...c })); // shallow clone to avoid mutation
@@ -402,12 +405,36 @@ export const computeEmployeePayroll = (emp) => {
     (reimbursementTaxStrategy === 'monthly' ? monthlyReimbursements * attendanceFactor : 0);
 
   // ── TAX ────────────────────────────────────────────────────────────────────
-  const monthBasedMonthsRemaining = payrollMonth >= 0
+  let monthBasedMonthsRemaining = payrollMonth >= 0
     ? (payrollMonth >= 3 ? (15 - payrollMonth) : (3 - payrollMonth))
-    : null;
-  const effectiveMonthsRemaining = Number.isFinite(Number(monthsRemaining)) && Number(monthsRemaining) > 0
+    : 1;
+
+  if (exit_date) {
+    // If exit date exists, cap the months remaining dynamically
+    const exitDateObj = new Date(exit_date);
+    const exitYear = exitDateObj.getFullYear();
+
+    if (payrollYear !== undefined && payrollMonth >= 0) {
+      if (exitYear === payrollYear || exitYear === payrollYear + 1) {
+        // Calculate exact days divided by 30 to get rounded up months
+        const payrollStart = new Date(payrollYear, payrollMonth, 1);
+        const daysDiff = (exitDateObj.getTime() - payrollStart.getTime()) / (1000 * 60 * 60 * 24);
+        
+        if (daysDiff > 0) {
+           let delta = Math.ceil(daysDiff / 30);
+           if (delta > 0 && delta < monthBasedMonthsRemaining) {
+              monthBasedMonthsRemaining = delta;
+           }
+        } else {
+           monthBasedMonthsRemaining = 1;
+        }
+      }
+    }
+  }
+
+  const effectiveMonthsRemaining = Number.isFinite(Number(monthsRemaining)) && Number(monthsRemaining) > 0 && !exit_date
     ? Number(monthsRemaining)
-    : (monthBasedMonthsRemaining || 1);
+    : monthBasedMonthsRemaining;
 
   const pastMonths = payrollMonth >= 0
     ? (payrollMonth >= 3 ? (payrollMonth - 3) : (payrollMonth + 9))
@@ -436,6 +463,7 @@ export const computeEmployeePayroll = (emp) => {
     projectedAnnualBasic,
     projectedAnnualHRA,
     annualRent,
+    leaveEncashmentExempt: exit_reason === 'Retirement' ? Math.min(leaveEncashmentPay, 2500000) : 0
   });
 
   const { 
@@ -444,7 +472,7 @@ export const computeEmployeePayroll = (emp) => {
     hraActual, hraRentExcess, hraCityLimit
   } = taxCalc;
   const remainingTax = Math.max(0, annualTax - tdsDeductedSoFar);
-  const tds = effectiveMonthsRemaining > 0 ? remainingTax / effectiveMonthsRemaining : 0;
+  let tds = effectiveMonthsRemaining > 0 ? remainingTax / effectiveMonthsRemaining : 0;
 
   // ── EPF / ESIC / PT / LWF ─────────────────────────────────────────────────
   let pfEmployee = 0;
@@ -463,34 +491,49 @@ export const computeEmployeePayroll = (emp) => {
   const pt = manualPtInput > 0 ? manualPtInput : getPT(work_state, grossSalary, payrollMonth, ptHalfYearlyMode, dateOfJoining, payrollYear);
   const lwf = manualLwfInput > 0 ? manualLwfInput : getLWF(work_state, payrollMonth, dateOfJoining, payrollYear);
 
-  const totalDeductions = pfEmployee + esiEmployee + pt + lwf + tds + employeeDeductions;
-  const netPay = grossSalary - totalDeductions + (reimbursementTaxStrategy === 'year_end' ? monthlyReimbursements : 0);
-
   // ── EPF STATUTORY BREAKUP ─────────────────────────────────────────────────
   const pfEps = Math.min(1250, pfEmployer * (8.33 / 12));
   const pfErShare = pfEmployer - pfEps;
   const attendedDays = daysInMonth - lopDays;
+
+  // ── EXIT TAX VALIDATION ────────────────────────────────────────────────────
+  const engineValidations = [];
+  const totalDeductionsWithoutTDS = pfEmployee + esiEmployee + pt + lwf + employeeDeductions;
+  const netPayBeforeTDS = grossSalary - totalDeductionsWithoutTDS + (reimbursementTaxStrategy === 'year_end' ? monthlyReimbursements : 0);
+
+  if (exit_date && tds > netPayBeforeTDS) {
+    engineValidations.push(`Notice: Target TDS deduction (₹${Math.round(tds).toLocaleString()}) for exit computation exceeded available Net Pay. Auto-capped to ₹${Math.max(0, Math.round(netPayBeforeTDS)).toLocaleString()}.`);
+    tds = Math.max(0, netPayBeforeTDS);
+  }
+
+  const totalDeductions = totalDeductionsWithoutTDS + tds;
+  const netPay = grossSalary - totalDeductions + (reimbursementTaxStrategy === 'year_end' ? monthlyReimbursements : 0);
 
   return {
     // Input mirrors
     components,
     standardBasic, standardHRA, standardSpecial, monthlyReimbursements,
     employerContribs, employeeDeductions, variableTarget, variablePay,
+    leaveEncashmentDays, leaveEncashmentPay, exit_date, exit_reason,
+    tdsDeductedSoFar,
+
     // Monthly computed
     attendanceFactor, attendedDays,
     basic, hra, special, overtimePay, arrearsPay, leaveEncashmentPay,
     grossSalary, standardGross, totalMonthlyCTC,
     fixedGross: basic + hra + special,
+
     // Tax
     annualGross, taxableIncome, annualTax, tds,
     taxFormulaDetail, calculatedHraExempt, hraFormulaString,
     hraActual, hraRentExcess, hraCityLimit,
     annualRent, projectedAnnualBasic, projectedAnnualHRA,
-    pastMonths, futureMonths, ytdGross,
+    pastMonths, futureMonths, ytdGross, monthsRemaining: effectiveMonthsRemaining,
+
     // Deductions
     pfEmployee, pfEmployer, pfEps, pfErShare,
     esiEmployee, esiEmployer, pt, lwf,
     totalDeductions, netPay,
-    arrearsBreakup, arrearsValidation,
+    arrearsBreakup, arrearsValidation, engineValidations
   };
 };

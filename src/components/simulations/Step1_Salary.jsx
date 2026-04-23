@@ -2,7 +2,7 @@ import React from 'react';
 
 export default function Step1_Salary({ state }) {
   const {
-    daysInMonth, lopDays, overtimeHours, otRate, leaveEncashmentDays, arrearEntries,
+    daysInMonth, lopDays, overtimeHours, otRate, leaveEncashmentDays, exit_date, exit_reason, arrearEntries,
     updateData, standardBasic, standardHRA, standardSpecial, salaryComponents, updateComponent, addArrearEntry, updateArrearEntry, removeArrearEntry,
     basic, hra, special, overtimePay, arrearsPay, leaveEncashmentPay, variablePay, grossSalary, attendanceFactor,
     monthlyReimbursements, reimbursementTaxStrategy
@@ -43,6 +43,19 @@ export default function Step1_Salary({ state }) {
           <div className="sim-input-group">
             <label className="has-tooltip" data-tooltip="Divided against Base Monthly Gross / 26 days.">Leave Encashment (Days) <span className="tooltip-icon">?</span></label>
             <input type="number" value={leaveEncashmentDays} onChange={(e) => updateData('leaveEncashmentDays', e.target.value)} />
+          </div>
+          <div className="sim-input-group">
+            <label className="has-tooltip" data-tooltip="Employee exit date, triggers fractional months computation.">Exit Date <span className="tooltip-icon">?</span></label>
+            <input type="date" value={exit_date || ''} onChange={(e) => updateData('exit_date', e.target.value)} />
+          </div>
+          <div className="sim-input-group">
+            <label className="has-tooltip" data-tooltip="Select 'Retirement' to enable maximum ₹25 Lakhs tax exemption for encashments.">Exit Reason <span className="tooltip-icon">?</span></label>
+            <select value={exit_reason || ''} onChange={(e) => updateData('exit_reason', e.target.value)} style={{ padding: '8px', border: '1px solid #cbd5e1', borderRadius: 6, outline: 'none' }}>
+              <option value="">-- Active / Normal Exit --</option>
+              <option value="Resignation">Resignation</option>
+              <option value="Termination">Termination</option>
+              <option value="Retirement">Retirement (Superannuation)</option>
+            </select>
           </div>
         </div>
 
