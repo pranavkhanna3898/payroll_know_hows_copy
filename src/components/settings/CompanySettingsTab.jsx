@@ -464,6 +464,14 @@ function StatutoryCompliance({ s, update }) {
         </Grid>
       </SectionCard>
       <SectionCard title="Professional Tax" icon="🏛️">
+        <Grid cols={2} style={{ marginBottom: 16 }}>
+          <Field label="Half-Yearly PT Deduction Mode" hint="For states like TN, KL, PY">
+            <select value={s.ptHalfYearlyMode || 'lump_sum'} onChange={e => update('ptHalfYearlyMode', e.target.value)} style={{ padding: '8px 12px', border: '1px solid #cbd5e1', borderRadius: 6, fontSize: 13, outline: 'none' }}>
+              <option value="lump_sum">Lump Sum (Deduct full in Sep/Mar)</option>
+              <option value="prorate">Prorate (Deduct equally each month)</option>
+            </select>
+          </Field>
+        </Grid>
         {s.ptStateRegistrations.map((reg, i) => (
           <Grid key={i} cols={4}>
             <Field label="State">
