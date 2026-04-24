@@ -139,14 +139,14 @@ export default function FRDTab() {
 
         {section.callout && renderCallout(section.callout)}
 
-        {/* Database Schema tables */}
+        {/* Database Schema and other tables */}
         {section.tables && section.tables.map((tbl, ti) => (
           <div key={ti} style={{ marginBottom: 24 }}>
             <h3 style={{ fontSize: 15, color: '#1e40af', marginBottom: 4, fontWeight: 700 }}>
               <code style={{ background: '#eef2ff', padding: '2px 8px', borderRadius: 4, fontSize: 13 }}>{tbl.name}</code>
-              <span style={{ fontWeight: 400, color: '#64748b', marginLeft: 8, fontSize: 13 }}>— {tbl.description}</span>
+              {tbl.description && <span style={{ fontWeight: 400, color: '#64748b', marginLeft: 8, fontSize: 13 }}>— {tbl.description}</span>}
             </h3>
-            {renderTable(["Column", "Type", "Description"], tbl.columns)}
+            {renderTable(tbl.headers || ["Column", "Type", "Description"], tbl.columns)}
           </div>
         ))}
 

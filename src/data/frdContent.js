@@ -528,6 +528,16 @@ export const FRD_SECTIONS = [
     ]
   },
   {
+    id: "engine-contract",
+    number: "7.1",
+    title: "Engine Input/Output Contract",
+    content: `The payroll engine (computeEmployeePayroll) is a pure function that accepts an employee object enriched with adjustments and returns a fully computed payroll result.
+
+Inputs: Employee salary components, attendance (days, LOP), overtime, arrear entries, variable payouts, tax declarations, YTD history, exit lifecycle, salary status, and company settings.
+
+Outputs: Monthly computed payroll including earnings breakdown, statutory deductions, tax liability, net pay, and validation warnings (55+ fields total).`
+  },
+  {
     id: "engine-flow",
     number: "7.2",
     title: "Computation Engine Flow",
@@ -626,6 +636,46 @@ export const FRD_SECTIONS = [
     }
   },
   {
+    id: "statutory-logic",
+    number: "7.4",
+    title: "Statutory Deduction Logic",
+    content: `The engine implements state-specific logic for Professional Tax and Labour Welfare Fund, along with configurable EPF methods.`,
+    tables: [
+      {
+        name: "Professional Tax (PT)",
+        description: "Monthly/Half-Yearly/Annual Slabs",
+        headers: ["Category", "States / Details"],
+        columns: [
+          ["Monthly States", "KA, MH, WB, GJ, AP, TG, JH, AS, MP"],
+          ["Half-Yearly States", "TN, KL, PY — lump_sum or prorate modes"],
+          ["Annual States", "OD, SK, BR, MZ — deducted in June"],
+          ["Exempt States", "DL, RJ, HR, UP, PB, HP, UK, GA, CH"]
+        ]
+      },
+      {
+        name: "Labour Welfare Fund (LWF)",
+        description: "Biannual/Annual Deductions",
+        headers: ["State / Group", "Contribution Timeline"],
+        columns: [
+          ["KA, MH, GJ", "June & December"],
+          ["WB", "July"],
+          ["TN", "January"],
+          ["AP, TG", "June only"]
+        ]
+      },
+      {
+        name: "EPF Calculation Methods",
+        description: "Employer/Employee configuration",
+        headers: ["Method ID", "Computation Logic"],
+        columns: [
+          ["flat_ceiling", "min(₹1,800, Basic × 12%) — default"],
+          ["actual_basic", "Basic × 12% — no ceiling"],
+          ["prorated_ceiling", "min(₹1,800 × attendanceFactor, Basic × 12%)"]
+        ]
+      }
+    ]
+  },
+  {
     id: "settings",
     number: "8",
     title: "Configurable Display & Preferences",
@@ -687,6 +737,23 @@ export const FRD_SECTIONS = [
     }
   },
   {
+    id: "ytd-logic",
+    number: "11",
+    title: "YTD (Year-To-Date) Aggregation Logic",
+    content: `YTD values are computed by querying all payrun_adjustments.computed_data snapshots from prior confirmed/completed payruns within the same Financial Year (April–March).
+
+Aggregated Fields:
+• ytdGross — Cumulative Gross Salary
+• ytdBasic — Cumulative Basic
+• ytdHRA — Cumulative HRA
+• ytdNetPay — Cumulative Net Pay
+• ytdTotalDeductions — Cumulative Deductions
+• ytdComponents — Per-component ID cumulative amounts
+• tdsDeductedSoFar — Cumulative TDS deducted
+
+These YTD values are injected into the engine and additionally displayed in the Salary Slip (when showYTDOnPayslip = true) and Tax Report (always).`
+  },
+  {
     id: "exports",
     number: "12",
     title: "Compliance Export Specifications",
@@ -710,6 +777,18 @@ export const FRD_SECTIONS = [
       { scenario: "TDS exceeds Net Pay (exit case)", behavior: "TDS auto-capped to max(0, netPayBeforeTDS) with validation warning" },
       { scenario: "salary_status = 'fnf_pending'", behavior: "Engine adds advisory warning; computation proceeds normally" },
     ]
+  },
+  {
+    id: "integration",
+    number: "14",
+    title: "IT Declaration & Reimbursement Integration",
+    content: `Verified declarations from the Employee Portal flow into the payrun automatically:
+
+1. Employee submits IT declaration via Employee Portal → stored in employee_submissions with status = 'submitted'
+2. Finance team reviews and verifies via Finance Verification Dashboard → status = 'verified', verified_data is populated
+3. At Step 2 of a payrun, the system queries all verified submissions for the current FY
+4. Verified values (80C, 80D, NPS, Home Loan, etc.) are auto-populated into the employee's tax override fields
+5. Admin can override any auto-populated value manually`
   },
   {
     id: "prerequisites",
