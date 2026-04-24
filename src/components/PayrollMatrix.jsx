@@ -13,6 +13,7 @@ import PayrollOpsTab from './payroll/PayrollOpsTab';
 import EmployeePortal from './portal/EmployeePortal';
 import FinanceVerificationTab from './finance/FinanceVerificationTab';
 import FRDTab from './FRDTab';
+import FieldDictionaryTab from './FieldDictionaryTab';
 
 export default function PayrollMatrix() {
   const [activeTab, setActiveTab] = useState("matrix");
@@ -63,6 +64,7 @@ export default function PayrollMatrix() {
         )}
 
         {activeTab === "frd" && <FRDTab />}
+        {activeTab === "dictionary" && <FieldDictionaryTab />}
       </div>
     </div>
   );

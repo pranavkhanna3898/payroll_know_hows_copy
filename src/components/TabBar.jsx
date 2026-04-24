@@ -10,6 +10,7 @@ const TABS = [
   { id: "finance", label: "🛡️ Finance Dashboard" },
   { id: "detail", label: "📋 Component Detail" },
   { id: "frd", label: "📄 FRD Document" },
+  { id: "dictionary", label: "📖 Data Dictionary" },
 ];
 
 export default function TabBar({ activeTab, onTabChange }) {
