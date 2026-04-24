@@ -1,5 +1,6 @@
 import { useState, useMemo } from 'react';
 import { FRD_META, FRD_SECTIONS } from '../data/frdContent';
+import Mermaid from './common/Mermaid';
 
 export default function FRDTab() {
   const [activeSection, setActiveSection] = useState('exec-summary');
@@ -128,6 +129,12 @@ export default function FRDTab() {
 
         {section.intro && (
           <p style={{ fontSize: 14, lineHeight: 1.7, color: '#475569', marginBottom: 16 }}>{section.intro}</p>
+        )}
+
+        {section.diagram && (
+          <div style={{ marginBottom: 24, padding: '10px', background: '#fff', borderRadius: 8, boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
+            <Mermaid chart={section.diagram} />
+          </div>
         )}
 
         {section.callout && renderCallout(section.callout)}

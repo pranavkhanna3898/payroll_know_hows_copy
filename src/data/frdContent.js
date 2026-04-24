@@ -32,6 +32,48 @@ export const FRD_SECTIONS = [
     }
   },
   {
+    id: "architecture",
+    number: "2",
+    title: "System Architecture",
+    intro: "Frontend components and Supabase backend tables",
+    diagram: `graph TD
+    subgraph Frontend["Frontend - React with Vite"]
+        UI["PayrollOpsTab - Orchestrator Component"]
+        S0["Step 0 - Initiate Payrun"]
+        S1["Step 1 - Review and Adjust Salaries"]
+        S2["Step 2 - Tax and TDS Configuration"]
+        S3["Step 3 - Tax Computation Report"]
+        S4["Step 4 - Confirm and Export Files"]
+        S5["Step 5 - Generate Salary Slips"]
+        ENGINE["payrollEngine.js - Computation Engine"]
+    end
+
+    subgraph Backend["Supabase PostgreSQL Backend"]
+        EMP["employees table"]
+        PR["payruns table"]
+        ADJ["payrun_adjustments table"]
+        CS["company_settings table"]
+        ES["employee_submissions table"]
+    end
+
+    UI --> S0
+    UI --> S1
+    UI --> S2
+    UI --> S3
+    UI --> S4
+    UI --> S5
+    S1 --> ENGINE
+    S2 --> ENGINE
+    S3 --> ENGINE
+    S4 --> ENGINE
+    S5 --> ENGINE
+    UI --> EMP
+    UI --> PR
+    UI --> ADJ
+    UI --> CS
+    S2 --> ES`
+  },
+  {
     id: "db-schema",
     number: "3",
     title: "Database Schema",
@@ -107,6 +149,103 @@ export const FRD_SECTIONS = [
     number: "4",
     title: "Payroll Pipeline — Step-by-Step Lifecycle",
     intro: "The payroll pipeline consists of 6 sequential steps, each represented by a dedicated UI component and a set of functional requirements.",
+    diagram: `flowchart TB
+    START(["Finance Admin opens Payroll Operations module"]) --> LOAD["System loads all employees, payruns, and company settings from Supabase"]
+    LOAD --> STEP0
+
+    subgraph STEP0["STEP 0: INITIATE PAYRUN"]
+        direction TB
+        A1["Admin selects the Payroll Month and Year from dropdowns"]
+        A2["Employee roster table displayed with Department filter"]
+        A3["System auto-excludes Withheld/Absconding employees"]
+        A4["Roster rows display salary status badges"]
+        A5["Admin selects/deselects employees via checkboxes"]
+        A6{"Draft payrun exists for this month?"}
+        A7["Prompt to resume existing draft"]
+        A8["Create new payrun record and save adjustment stubs"]
+        A1 --> A2
+        A2 --> A3
+        A3 --> A4
+        A4 --> A5
+        A5 --> A6
+        A6 -- "Yes, draft exists" --> A7
+        A6 -- "No, fresh month" --> A8
+    end
+
+    STEP0 --> STEP1
+
+    subgraph STEP1["STEP 1: REVIEW AND ADJUST SALARIES"]
+        direction TB
+        B1["Master table: Name, Code, Dept, Gross, Net Pay"]
+        B2["Click row to open Adjustment Detail Pane"]
+        B3["Inputs: Days in Month, LOP, OT Hours/Rate, Leave Encashment, Manual Deduction"]
+        B4["Salary Component Table with prorated amounts"]
+        B5["Variable component payout input fields"]
+        B6["Arrears section: Add entries with Historical Month, Gross, Days"]
+        B7["Arrear days auto-clamped with validation warning"]
+        B8["Live Computation: Fixed Gross, Variable Pay, Total Gross, Net Pay"]
+        B1 --> B2 --> B3 --> B4 --> B5 --> B6 --> B7 --> B8
+    end
+
+    STEP1 --> STEP2
+
+    subgraph STEP2["STEP 2: TAX AND TDS CONFIGURATION"]
+        direction TB
+        C1["Auto-load verified IT Declarations from employee_submissions"]
+        C2["Auto-fetch YTD TDS from prior confirmed payruns"]
+        C3["Tax Card: YTD Tax, Projected Annual Tax, Monthly TDS"]
+        C4["Configure: Regime, 80C, 80D, NPS, HomeLoan, Rent, LTA"]
+        C5["Engine evaluates annual tax liability"]
+        C6["Monthly TDS = (Annual Tax - YTD TDS) / Months Remaining"]
+        C7["Exit TDS auto-cap validation"]
+        C1 --> C2 --> C3 --> C4 --> C5 --> C6 --> C7
+    end
+
+    STEP2 --> STEP3
+
+    subgraph STEP3["STEP 3: TAX COMPUTATION REPORT"]
+        direction TB
+        D1["Master-detail: Employee list + Tax computation sheet"]
+        D2["Section 1: Earnings Breakdown - YTD, Current, Projected, Total"]
+        D3["Section 2: Deductions and Exemptions - Std Deduction, HRA, Ch VI-A"]
+        D4["Section 3: Tax Liability - Formula trace, Annual Tax, Monthly TDS"]
+        D5["Engine validation warnings displayed"]
+        D1 --> D2 --> D3 --> D4 --> D5
+    end
+
+    STEP3 --> STEP4
+
+    subgraph STEP4["STEP 4: CONFIRM AND EXPORT"]
+        direction TB
+        E1["Summary Dashboard: Total Gross, Net, EPF, ESIC, PT, LWF, TDS"]
+        E2["Payroll Register Preview table"]
+        E3["7 Export buttons: Bank CSV, EPF ECR, ESIC, TDS 24Q, PT ZIP, LWF ZIP, Register"]
+        E4["Confirm Payrun: persist adjustments and computed data"]
+        E5["Status updated to confirmed"]
+        E1 --> E2 --> E3 --> E4 --> E5
+    end
+
+    STEP4 --> STEP5
+
+    subgraph STEP5["STEP 5: SALARY SLIPS"]
+        direction TB
+        F1["Salary Slip Preview with earnings, deductions, Net Pay"]
+        F2["Dept and Work State filters"]
+        F3["Publish/Unpublish individual slips"]
+        F4["Bulk Publish via filters"]
+        F5["Excel Upload targeting by EMP_CODE"]
+        F6["Download All as multi-sheet XLSX"]
+        F7["Print/Save PDF via browser dialog"]
+        F8["Complete Payroll: status to completed"]
+        F1 --> F2 --> F3 --> F4 --> F5 --> F6 --> F7 --> F8
+    end
+
+    STEP5 --> DONE(["Payrun Completed Successfully"])
+
+    DONE -.-> UNLOCK["Admin clicks Unlock on confirmed/completed payrun"]
+    UNLOCK --> AUDIT["Mandatory reason prompt, audit_logs entry written"]
+    AUDIT --> REVERT["Status reverted to reviewed, re-open at Step 1"]
+    REVERT --> STEP1\`,
     steps: [
       {
         step: 0,
@@ -389,6 +528,73 @@ export const FRD_SECTIONS = [
     ]
   },
   {
+    id: "engine-flow",
+    number: "7.2",
+    title: "Computation Engine Flow",
+    intro: "executeEmployeePayroll function execution pipeline",
+    diagram: `flowchart TD
+    INPUT(["Employee Object: salary components, attendance, tax overrides, exit info, salary status"]) --> STATUS_CHECK
+
+    STATUS_CHECK{"Is salary_status withheld or absconding?"}
+    STATUS_CHECK -- "Yes: salary stopped" --> ZERO_OUT["Return zeroed payroll object with salaryWithheld = true"]
+    STATUS_CHECK -- "No: proceed" --> PASS1
+
+    subgraph RESOLUTION["3-Pass Salary Component Resolution"]
+        PASS1["PASS 1: Resolve Numeric Amounts - if annual, divide by 12"]
+        PASS2["PASS 2: Resolve Formula Strings - evaluate expressions using scopeBasic"]
+        PASS3["PASS 3: Hydrate Statutory Blanks - auto-calculate EPF, ESIC, PT, LWF"]
+        PASS1 --> PASS2 --> PASS3
+    end
+
+    PASS3 --> ACCUMULATE
+
+    ACCUMULATE["Accumulate: bucket into Basic, HRA, Special, Reimbursements, Employer Contribs, Employee Deductions, Variable"]
+
+    ACCUMULATE --> ATTEND
+
+    ATTEND["Attendance Proration: attendanceFactor = (daysInMonth - lopDays) / daysInMonth"]
+
+    ATTEND --> ARREARS
+
+    ARREARS["Arrears: daily rate x accepted days, auto-clamp, component breakup"]
+
+    ARREARS --> GROSS
+
+    GROSS["Gross = prorated Basic + HRA + Special + OT + Arrears + Leave Encashment + Variable + Reimbursements"]
+
+    GROSS --> TAX_PROJ
+
+    TAX_PROJ["Tax Projection: annualGross = ytdGross + currentGross + (standardGross x futureMonths)"]
+
+    TAX_PROJ --> TAX_CALC
+
+    TAX_CALC["evaluateTaxLiability: regime-specific slabs, Chapter VI-A, HRA exemption"]
+
+    TAX_CALC --> TDS
+
+    TDS["Monthly TDS = (annualTax - tdsDeductedSoFar) / monthsRemaining"]
+
+    TDS --> STAT
+
+    STAT["Statutory: EPF (3 methods), ESIC (0.75%/3.25%), PT (state slab), LWF (state amount)"]
+
+    STAT --> VALIDATE
+
+    VALIDATE{"Exit date set AND TDS > netPayBeforeTDS?"}
+    VALIDATE -- "Yes" --> CAP["Auto-cap TDS to max(0, netPayBeforeTDS), push warning"]
+    VALIDATE -- "No" --> FNF_CHECK
+    CAP --> FNF_CHECK
+
+    FNF_CHECK{"salary_status = fnf_pending?"}
+    FNF_CHECK -- "Yes" --> FNF_WARN["Push advisory: FnF Pending"]
+    FNF_CHECK -- "No" --> NET
+    FNF_WARN --> NET
+
+    NET["Net Pay = Gross - (EPF + ESIC + PT + LWF + Deductions + TDS) + Reimbursements if year-end"]
+
+    NET --> OUTPUT(["Return computed payroll: 55+ fields, breakups, validations"])`
+  },
+  {
     id: "tax-slabs",
     number: "7.3",
     title: "Tax Regime Slab Tables",
@@ -459,6 +665,22 @@ export const FRD_SECTIONS = [
 5. System calls addPayrunAuditLog → appends { action, reason, user, timestamp } to audit_logs JSONB array
 6. Success toast displayed, payrun re-opens at Step 1 for corrections
 7. Admin can re-adjust salaries, re-confirm, and re-export compliance files`,
+    diagram: `sequenceDiagram
+    actor Admin as Finance Admin
+    participant UI as Payrun History UI
+    participant API as Supabase API Layer
+    participant DB as payruns Table in PostgreSQL
+
+    Admin->>UI: Clicks Unlock button on confirmed/completed payrun
+    UI->>Admin: Displays modal prompt for mandatory unlock reason
+    Admin->>UI: Types unlock reason text and submits
+    UI->>API: Calls updatePayrunStatus (payrun ID, status: reviewed)
+    API->>DB: UPDATE payruns SET status = reviewed
+    UI->>API: Calls addPayrunAuditLog (payrun ID, action, reason, user, timestamp)
+    API->>DB: Append JSON object to audit_logs JSONB array
+    UI->>Admin: Displays success toast confirming unlock
+    UI->>UI: Calls openPayrun to navigate to Step 1 for corrections
+    Note over Admin,DB: Admin can now re-adjust salaries, re-confirm, and re-export files`,
     callout: {
       type: "warning",
       text: "The audit log is append-only. Every unlock creates a permanent record with the reason, acting user, and ISO timestamp. This data cannot be deleted through the UI."
