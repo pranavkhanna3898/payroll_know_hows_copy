@@ -528,6 +528,18 @@ export const FRD_SECTIONS = [
     ]
   },
   {
+    id: "engine-spec",
+    number: "7",
+    title: "Computation Engine — Functional Specification",
+    content: `The computation engine (payrollEngine.js) is the deterministic core of the application. It ensures that every salary, tax, and statutory component is calculated accurately based on Indian compliance standards.
+
+This section covers:
+• The functional contract (Inputs/Outputs)
+• The step-by-step execution pipeline (3-Pass Resolution)
+• Tax slab configurations for New and Old regimes
+• Statutory deduction logic for EPF, ESIC, PT, and LWF`
+  },
+  {
     id: "engine-contract",
     number: "7.1",
     title: "Engine Input/Output Contract",
