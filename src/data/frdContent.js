@@ -270,7 +270,7 @@ export const FRD_SECTIONS = [
     DONE -.-> UNLOCK["Admin navigates to Payrun History and clicks Unlock"]
     UNLOCK --> AUDIT["System prompts for mandatory reason, writes audit_logs entry"]
     AUDIT --> REVERT["Status reverted to reviewed, re-open at Step 1"]
-    REVERT --> STEP1\`,
+    REVERT --> STEP1`,
     steps: [
       {
         step: 0,
