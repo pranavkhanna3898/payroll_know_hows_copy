@@ -217,6 +217,7 @@ function EmpDetailPane({ emp, activePayrun, updateAdjustment, companySettings, o
                   ))}
                 </div>
               </div>
+            )}
             {companySettings?.incentiveDisplayMode === 'breakup' && variableComps.length > 0 && c.variablePay > 0 && (
               <div style={{ marginTop: 16, paddingTop: 16, borderTop: '1px dashed rgba(255,255,255,0.2)' }}>
                 <div style={{ fontSize: 11, color: '#fbbf24', textTransform: 'uppercase', marginBottom: 8, fontWeight: 700 }}>Variable Component Breakup</div>
