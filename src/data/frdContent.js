@@ -90,11 +90,13 @@ export const FRD_SECTIONS = [
           ["date_of_joining", "DATE", "Employment start date"],
           ["is_active", "BOOLEAN", "Login/portal access flag"],
           ["salary_structure", "JSONB", "Array of salary component objects"],
-          ["input_mode", "TEXT", "monthly or annual"],
+          ["input_mode", "TEXT", "monthly or annual — how amounts in salary_structure are entered"],
           ["tax_regime", "TEXT", "new or old"],
           ["bank_info", "JSONB", "{ bank_name, account_no, ifsc }"],
           ["work_state", "TEXT", "State code for PT/LWF calculation"],
           ["work_city", "TEXT", "City name for HRA metro classification"],
+          ["base_state", "TEXT", "Residential state for HRA"],
+          ["base_city", "TEXT", "Residential city"],
           ["exit_date", "DATE", "Nullable — triggers exit/FnF projection"],
           ["exit_reason", "TEXT", "Resignation, Termination, Retirement"],
           ["salary_status", "TEXT", "active, withheld, absconding, fnf_pending"],
@@ -107,7 +109,7 @@ export const FRD_SECTIONS = [
           ["id", "UUID (PK)", "Auto-generated"],
           ["month_year", "TEXT", 'e.g., "April 2026"'],
           ["status", "TEXT", "draft → initiated → reviewed → tax_checked → confirmed → completed"],
-          ["audit_logs", "JSONB", "Array of { action, reason, user, timestamp } objects"],
+          ["audit_logs", "JSONB", "Array of { action, reason, user, timestamp } objects for correction history"],
           ["created_at", "TIMESTAMPTZ", "Creation timestamp"],
           ["updated_at", "TIMESTAMPTZ", "Last modification"],
         ]
@@ -116,10 +118,11 @@ export const FRD_SECTIONS = [
         name: "payrun_adjustments",
         description: "Per-employee overrides and computed snapshots",
         columns: [
-          ["payrun_id", "UUID (FK)", "Payrun reference"],
-          ["employee_id", "UUID (FK)", "Employee reference"],
-          ["adjustments", "JSONB", "Per-employee overrides: LOP, OT, arrears, variable, tax"],
-          ["computed_data", "JSONB", "Snapshot of computed output (YTD source)"],
+          ["payrun_id", "UUID (FK → payruns)", "Payrun reference"],
+          ["employee_id", "UUID (FK → employees)", "Employee reference"],
+          ["adjustments", "JSONB", "Per-employee overrides: LOP days, OT, arrears, variable payouts, manual deductions, tax overrides"],
+          ["computed_data", "JSONB", "Snapshot of computed output (used for YTD aggregation in future payruns)"],
+          ["Unique constraint on", "(payrun_id, employee_id)", "UPSERT-safe"],
         ]
       },
       {
@@ -127,7 +130,7 @@ export const FRD_SECTIONS = [
         description: "Singleton configuration row",
         columns: [
           ["id", "UUID (PK)", "Singleton row"],
-          ["settings", "JSONB", "Full company configuration"],
+          ["settings", "JSONB", "Full company configuration (EPF method, PT registrations, display preferences, etc.)"],
         ]
       },
       {
@@ -139,7 +142,7 @@ export const FRD_SECTIONS = [
           ["type", "TEXT", "it_declaration or reimbursement"],
           ["status", "TEXT", "draft → submitted → verified / rejected"],
           ["submitted_data", "JSONB", "Employee's declared values and proof URLs"],
-          ["verified_data", "JSONB", "Finance-approved values"],
+          ["verified_data", "JSONB", "Finance-approved values that feed into payrun computation"],
         ]
       }
     ]
@@ -277,13 +280,13 @@ export const FRD_SECTIONS = [
         component: "PayrollOps_Initiate",
         title: "Initiate Payrun",
         actions: [
-          "Admin selects Payroll Month and Year from dropdowns",
-          "Employee roster displayed with Department filter",
-          "System auto-excludes employees with salary status Withheld or Absconding",
-          "Roster rows display salary status badges (WITHHELD, ABSCONDING, FNF)",
-          "Admin selects/deselects employees for inclusion via checkboxes",
+          "Admin selects the Payroll Month and Year from dropdowns",
+          "Employee roster table is displayed with Department filter dropdown",
+          "System auto-excludes employees with salary status Withheld or Absconding from default selection",
+          "Roster rows display salary status badges: WITHHELD in red, ABSCONDING in dark red, FNF in blue, alongside the tax regime badge",
+          "Admin manually selects or deselects employees for inclusion in this payrun using checkboxes",
           "System checks for existing draft payrun → prompts to resume or creates new",
-          "New payrun record saved with initial adjustment stubs for each employee",
+          "New payrun record saved with initial adjustment stubs for each selected employee",
         ]
       },
       {
@@ -291,15 +294,15 @@ export const FRD_SECTIONS = [
         component: "PayrollOps_Review",
         title: "Review & Adjust Salaries",
         actions: [
-          "Master table: Name, Code, Department, Gross, Net Pay",
-          "Click row → slide-over Adjustment Detail Pane",
-          "Inputs: Days in Month, LOP Days, OT Hours/Rate, Leave Encashment Days, Manual Deduction (₹)",
-          "Salary Component Table: Name, Type Badge, Monthly, Prorated, Variable Payout, Final",
-          "Variable components: editable payout input per component",
-          "Arrears: Add entries with Historical Month, Days, Gross, Arrear Days",
-          "Arrear days auto-clamped to min(monthDays, paidDays) with validation warning",
-          "Live Computation: Fixed Gross, Variable Pay, Total Gross, Net Pay",
-          "Configurable breakup display for arrears and incentives",
+          "Master table displays all selected employees with Name, Code, Department, computed Gross Salary, and Net Pay",
+          "Admin clicks an employee row to open the slide-over Adjustment Detail Pane",
+          "Adjustment inputs are displayed: Days in Month, LOP Days, Overtime Hours, Overtime Rate per hour, Leave Encashment Days, and Manual Deduction amount in Rupees",
+          "Salary Component Table shows each component with columns: Name, Type Badge, Monthly Amount, Prorated Amount after LOP, Variable Payout input field, and Final Amount",
+          "For each variable-type component, Admin enters the current month payout amount into the editable input field",
+          "Arrears section: Admin clicks Add Month to create arrear entries with Historical Month name, Days in that Month, Historical Gross amount, and Arrear Days to be paid",
+          "Arrear days are auto-clamped to the minimum of the historical month days and the current month paid days, with a validation warning shown if clamping occurs",
+          "Live Computation Result panel refreshes in real-time showing: Fixed Gross, Variable Pay, Total Gross Salary, and Net Pay",
+          "If arrear display is set to breakup mode with review visibility, a component-wise arrear breakup table is shown. Same for variable incentive breakup if configured.",
         ]
       },
       {
@@ -307,13 +310,13 @@ export const FRD_SECTIONS = [
         component: "PayrollOps_TaxTDS",
         title: "Tax & TDS Configuration",
         actions: [
-          "Auto-load verified IT declarations from employee_submissions",
-          "Auto-fetch YTD TDS from prior confirmed payruns in same FY",
-          "Tax Card per employee: YTD Tax, Projected Annual Tax, Monthly TDS",
-          "Configure: Regime (New/Old), 80C, 80D Self/Parents (senior citizen checkbox), NPS, Home Loan, 80G/80E, 80TTA, Rent, LTA",
-          "Chapter VI-A inputs disabled when regime is New",
-          "Engine evaluates annual tax → monthly TDS",
-          "Exit TDS auto-cap validation (prevents negative net pay)",
+          "System auto-loads Finance-verified IT Declaration submissions from the employee_submissions table for the current Financial Year",
+          "System auto-fetches Year-To-Date TDS history by querying computed_data from all prior confirmed or completed payruns in this Financial Year",
+          "For each employee, an expandable Tax Card displays: YTD Tax already deducted, Projected Annual Tax liability, and computed Monthly TDS amount",
+          "Admin can configure per-employee: Tax Regime selection between New and Old, Section 80C investments, 80D Medical for self and parents with senior citizen checkbox, NPS 80CCD-1B, Home Loan Interest under Section 24b, Donations under 80G and 80E, Savings Interest under 80TTA, Monthly Rent for HRA, and LTA claimed",
+          "Engine evaluates the annual tax liability under the selected regime using projected annual gross, applicable deductions, and HRA exemption",
+          "Monthly TDS is computed as: Annual Tax minus TDS already deducted, divided by the number of months remaining in the Financial Year",
+          "For employees with an exit date set, the system validates whether the computed TDS exceeds the net pay before TDS deduction. If it does, the TDS is auto-capped to prevent a negative net pay, and a warning is displayed.",
         ]
       },
       {
@@ -321,11 +324,11 @@ export const FRD_SECTIONS = [
         component: "PayrollOps_TaxReport",
         title: "Tax Computation Report",
         actions: [
-          "Master-detail layout: employee list + per-employee tax sheet",
-          "Section 1 — Earnings Breakdown: YTD, Current Month, Projected Future, Total",
-          "Section 2 — Deductions & Exemptions: Standard Deduction, HRA Exemption, Chapter VI-A",
-          "Section 3 — Tax Liability: Formula trace, Annual Tax, Monthly TDS",
-          "Engine validation warnings with ⚠️ icons (exit auto-cap, FnF flags)",
+          "Master-detail layout: scrollable employee list panel on the left, detailed per-employee tax computation sheet on the right",
+          "Section 1 of the report shows Earnings Breakdown: a 4-column table with Actual Earnings YTD, Current Month Actual, Projected Future Earnings, and Total Annual Earning for Basic Salary, HRA, Special Allowances, and Total Gross",
+          "Section 2 shows Deductions and Exemptions: Standard Deduction amount, HRA Exemption calculated under Section 10-13A with formula trace, and all Chapter VI-A declarations with individual amounts",
+          "Section 3 shows Tax Liability Output: the slab-wise formula trace string, computed Annual Tax, and implied Monthly TDS based on remaining months",
+          "Any engine validation warnings are displayed at the top of Section 3 with warning icons, including exit auto-cap notices and Full-and-Final pending flags",
         ]
       },
       {
@@ -333,10 +336,11 @@ export const FRD_SECTIONS = [
         component: "PayrollOps_Confirm",
         title: "Confirm & Export",
         actions: [
-          "Summary Dashboard: Total Gross, Net Payable, EPF, ESIC, PT, LWF, TDS",
-          "Payroll Register Preview table with per-employee breakdown",
-          "7 compliance export buttons: Bank CSV, EPF ECR, ESIC Return, TDS 24Q, PT ZIP, LWF ZIP, Full Register",
-          "Confirm Payrun: persist adjustments + computed data, status → confirmed",
+          "Payrun Summary Dashboard displays aggregated totals across all employees: Total Gross, Net Payable, Total EPF including EE and ER, Total ESIC including EE and ER, Total Professional Tax, Total LWF, and Total TDS",
+          "Payroll Register Preview table lists every employee with their individual Gross, EPF Employee share, ESIC Employee share, PT, LWF, TDS, Total Deductions, and Net Pay",
+          "Compliance Exports panel provides 7 download buttons: Bank Transfer CSV in selected bank format, EPF ECR v2 text file, ESIC Return text file, TDS 24Q Excel pre-fill, Professional Tax state-wise ZIP, LWF state-wise ZIP, and Full Payroll Register Excel",
+          "Admin clicks Confirm Payrun button which persists all per-employee adjustment and computed data snapshots to the payrun_adjustments table",
+          "Payrun status is updated from tax_checked to confirmed in the payruns table",
         ]
       },
       {
@@ -344,15 +348,14 @@ export const FRD_SECTIONS = [
         component: "PayrollOps_SlipViewer",
         title: "Salary Slips",
         actions: [
-          "Slip Preview: company header, employee details, attendance, earnings, deductions, Net Pay",
-          "YTD column (optional via showYTDOnPayslip setting)",
-          "Arrear/variable breakup display (configurable)",
-          "Dept & Work State dropdown filters",
-          "Publish Filtered: bulk publish matching filter criteria",
-          "Excel Upload Targeting: upload .xlsx with EMP_CODE column",
-          "Download All: multi-sheet Excel workbook (one sheet per employee)",
-          "Print/Save PDF: native browser dialog",
-          "Complete Payroll: status → completed, reset to Step 0",
+          "Salary Slip Preview renders for the selected employee with: company header and address, employee details grid, attendance summary row, earnings table with all components, deductions table with statutory and custom items, and a Net Pay take-home banner",
+          "Left panel shows the employee list with Department and Work State dropdown filters for narrowing the visible employees",
+          "Each employee row shows Published or Draft status. Admin can click Publish or Unpublish for individual employees.",
+          "Bulk Publish via Filtered button publishes slips for all employees matching the active Department and State filters",
+          "Excel-based Targeting: Admin uploads an XLSX file containing an EMP_CODE column. The system matches employee codes and publishes corresponding slips.",
+          "Download All Slips button exports every employee salary slip as a multi-sheet Excel workbook with one sheet per employee",
+          "Print or Save PDF button launches the native browser print dialog for the currently viewed salary slip",
+          "Complete Payroll button updates the payrun status to completed and resets the UI back to Step 0",
         ]
       },
     ]
@@ -369,11 +372,11 @@ export const FRD_SECTIONS = [
           { id: "FR-0.2", req: "User SHALL select a payroll month (1–12) and year", priority: "P0" },
           { id: "FR-0.3", req: "Employee roster SHALL display with columns: Checkbox, Emp Code, Name, Designation, Department, Joining Date, Regime", priority: "P0" },
           { id: "FR-0.4", req: "Employees with salary_status = 'withheld' or 'absconding' SHALL be auto-excluded from default selection and \"Select All\"", priority: "P0" },
-          { id: "FR-0.5", req: "Salary status badges SHALL be visually displayed alongside the tax regime badge", priority: "P1" },
+          { id: "FR-0.5", req: "Salary status badges (WITHHELD, ABSCONDING, FNF) SHALL be visually displayed alongside the tax regime badge", priority: "P1" },
           { id: "FR-0.6", req: "Department filter dropdown SHALL allow filtering the roster before selection", priority: "P1" },
           { id: "FR-0.7", req: "If a draft payrun for the selected month exists, system SHALL prompt user to resume instead of creating a duplicate", priority: "P0" },
           { id: "FR-0.8", req: "Summary card SHALL show count of selected employees and estimated Gross", priority: "P1" },
-          { id: "FR-0.9", req: "Payrun History tab SHALL list all historical payruns with status, creation date, and action buttons", priority: "P0" },
+          { id: "FR-0.9", req: "\"Payrun History\" tab SHALL list all historical payruns with status, creation date, and action buttons (Open, Delete, Unlock)", priority: "P0" },
           { id: "FR-0.10", req: "Delete button SHALL only be available for non-confirmed, non-completed payruns", priority: "P0" },
           { id: "FR-0.11", req: "Unlock button SHALL only appear for confirmed or completed payruns", priority: "P0" },
         ]
@@ -382,16 +385,16 @@ export const FRD_SECTIONS = [
         group: "Step 1 — Review & Adjust",
         items: [
           { id: "FR-1.1", req: "Master table SHALL display all selected employees with: Name, Code, Department, Gross, Net Pay, and status indicators", priority: "P0" },
-          { id: "FR-1.2", req: "Clicking an employee row SHALL open the Adjustment Detail Pane", priority: "P0" },
+          { id: "FR-1.2", req: "Clicking an employee row SHALL open the Adjustment Detail Pane (slide-over panel)", priority: "P0" },
           { id: "FR-1.3", req: "Adjustment inputs SHALL include: Days in Month, LOP Days, OT Hours, OT Rate, Leave Encashment Days, Manual Deduction (₹)", priority: "P0" },
-          { id: "FR-1.4", req: "Salary Component Table SHALL display each component with: Name, Type Badge, Monthly Amount, Prorated Amount, Variable Payout, Final Amount", priority: "P0" },
-          { id: "FR-1.5", req: "For variable type components, an editable Variable Payout input field SHALL be provided", priority: "P0" },
-          { id: "FR-1.6", req: "Arrears section SHALL allow adding multiple arrear entries with: Historical Month, Days in Month, Historical Gross, Arrear Days", priority: "P0" },
+          { id: "FR-1.4", req: "Salary Component Table SHALL display each component with: Name, Type Badge, Monthly Amount, Prorated Amount, Variable Payout input, and Final Amount", priority: "P0" },
+          { id: "FR-1.5", req: "For variable type components, an editable \"Variable Payout\" input field SHALL be provided per component", priority: "P0" },
+          { id: "FR-1.6", req: "Arrears section SHALL allow adding multiple arrear entries with: Historical Month selector, Days in Month, Historical Gross, Arrear Days", priority: "P0" },
           { id: "FR-1.7", req: "Arrear days SHALL be auto-clamped to min(monthDays, paidDays) with validation message", priority: "P0" },
           { id: "FR-1.8", req: "Live Computation Result panel SHALL display: Fixed Gross, Variable Pay, Total Gross, Net Pay", priority: "P0" },
           { id: "FR-1.9", req: "If arrearDisplayMode = 'breakup' and visibility includes 'review', component-wise arrear breakup SHALL be displayed", priority: "P1" },
           { id: "FR-1.10", req: "If incentiveDisplayMode = 'breakup', individual variable component breakups SHALL be displayed", priority: "P1" },
-          { id: "FR-1.11", req: "All adjustments SHALL be auto-persisted to Supabase on change", priority: "P0" },
+          { id: "FR-1.11", req: "All adjustments SHALL be auto-persisted to Supabase (payrun_adjustments table) on change", priority: "P0" },
         ]
       },
       {
@@ -399,12 +402,12 @@ export const FRD_SECTIONS = [
         items: [
           { id: "FR-2.1", req: "For each employee, expandable tax card SHALL display: YTD Tax Deducted, Projected Annual Tax, Monthly TDS", priority: "P0" },
           { id: "FR-2.2", req: "System SHALL auto-load verified IT declarations from employee_submissions table for the current FY", priority: "P0" },
-          { id: "FR-2.3", req: "System SHALL auto-fetch YTD TDS history from prior confirmed/completed payruns", priority: "P0" },
+          { id: "FR-2.3", req: "System SHALL auto-fetch YTD TDS history from prior confirmed/completed payruns in the same FY", priority: "P0" },
           { id: "FR-2.4", req: "Tax regime selector SHALL allow switching between New and Old for each employee", priority: "P0" },
-          { id: "FR-2.5", req: "Chapter VI-A inputs SHALL be editable: 80C, 80D Self, 80D Parents (+ senior citizen checkbox), NPS, Home Loan, 80G/80E, 80TTA/80TTB", priority: "P0" },
+          { id: "FR-2.5", req: "Chapter VI-A inputs SHALL be editable: 80C, 80D Self, 80D Parents (+ senior citizen checkbox), 80CCD(1B) NPS, Home Loan Interest, 80G/80E, 80TTA/80TTB", priority: "P0" },
           { id: "FR-2.6", req: "Chapter VI-A inputs SHALL be disabled when tax regime is new", priority: "P0" },
           { id: "FR-2.7", req: "Monthly rent and LTA claimed inputs SHALL be provided for HRA exemption calculation", priority: "P1" },
-          { id: "FR-2.8", req: "YTD history inputs SHALL be pre-populated but remain editable", priority: "P0" },
+          { id: "FR-2.8", req: "YTD history inputs SHALL be pre-populated but remain editable: YTD Gross, Basic, HRA, TDS, and Months Remaining", priority: "P0" },
           { id: "FR-2.9", req: "City type (Metro/Non-Metro) SHALL be auto-derived from work city", priority: "P0" },
         ]
       },
@@ -421,32 +424,32 @@ export const FRD_SECTIONS = [
       {
         group: "Step 4 — Confirm & Export",
         items: [
-          { id: "FR-4.1", req: "Payrun Summary Dashboard SHALL show aggregated totals: Total Gross, Net Payable, EPF, ESIC, PT, LWF, TDS", priority: "P0" },
-          { id: "FR-4.2", req: "Payroll Register Preview SHALL list all employees with per-employee breakdown", priority: "P0" },
+          { id: "FR-4.1", req: "Payrun Summary Dashboard SHALL show aggregated totals: Total Gross, Net Payable, Total EPF including EE and ER, Total ESIC including EE and ER, Total Professional Tax, Total LWF, and Total TDS", priority: "P0" },
+          { id: "FR-4.2", req: "Payroll Register Preview SHALL list all employees with per-employee breakdown of Gross, EPF EE, ESIC EE, PT, LWF, TDS, Total Deductions, Net Pay", priority: "P0" },
           { id: "FR-4.3", req: "Bank Transfer File export SHALL support formats: HDFC, ICICI, SBI, Axis, Generic CSV", priority: "P0" },
           { id: "FR-4.4", req: "EPF ECR v2 export SHALL generate UAN-based text file", priority: "P0" },
           { id: "FR-4.5", req: "ESIC Return export SHALL generate IP Number-based contribution file", priority: "P0" },
           { id: "FR-4.6", req: "TDS 24Q pre-fill stub SHALL be exported as Excel", priority: "P0" },
-          { id: "FR-4.7", req: "Professional Tax SHAL be exported as state-wise ZIP", priority: "P0" },
+          { id: "FR-4.7", req: "Professional Tax return SHALL be exported as state-wise ZIP (each state as a separate Excel within the archive)", priority: "P0" },
           { id: "FR-4.8", req: "LWF Statement SHALL be exported as state-wise ZIP", priority: "P0" },
           { id: "FR-4.9", req: "Payroll Register (full) SHALL be exported as Excel with all component columns", priority: "P0" },
-          { id: "FR-4.10", req: "Confirm Payrun action SHALL persist all adjustments + computed data and update status to confirmed", priority: "P0" },
+          { id: "FR-4.10", req: "\"Confirm Payrun\" action SHALL: persist all adjustments + computed data to payrun_adjustments, update payrun status to confirmed", priority: "P0" },
         ]
       },
       {
         group: "Step 5 — Salary Slips",
         items: [
-          { id: "FR-5.1", req: "Salary Slip SHALL render with: Company header, employee details, attendance, earnings, deductions, Net Pay", priority: "P0" },
-          { id: "FR-5.2", req: "If showYTDOnPayslip = true, a YTD column SHALL appear in earnings and deductions tables", priority: "P1" },
-          { id: "FR-5.3", req: "If incentiveDisplayMode = 'breakup', variable components SHALL be listed individually", priority: "P1" },
+          { id: "FR-5.1", req: "Salary Slip SHALL render with: Company header, employee details grid, attendance summary, earnings table, deductions table, and Net Pay banner", priority: "P0" },
+          { id: "FR-5.2", req: "If showYTDOnPayslip = true, a YTD column SHALL appear in both earnings and deductions tables", priority: "P1" },
+          { id: "FR-5.3", req: "If incentiveDisplayMode = 'breakup', variable components SHALL be listed individually in the slip", priority: "P1" },
           { id: "FR-5.4", req: "If arrearDisplayMode = 'breakup' with slip visibility, arrear components SHALL be listed individually", priority: "P1" },
-          { id: "FR-5.5", req: "Employer contributions SHALL be shown in Net Pay footer as informational", priority: "P0" },
-          { id: "FR-5.6", req: "Employee list panel SHALL support Department and Work State dropdown filters", priority: "P1" },
-          { id: "FR-5.7", req: "Publish Filtered button SHALL publish slips for all employees matching current filters", priority: "P1" },
-          { id: "FR-5.8", req: "Excel Upload Targeting SHALL accept .xlsx with EMP_CODE column and publish matches", priority: "P1" },
-          { id: "FR-5.9", req: "Download All SHALL export multi-sheet Excel workbook (one sheet per employee)", priority: "P0" },
-          { id: "FR-5.10", req: "Print/Save PDF SHALL use native browser print dialog", priority: "P0" },
-          { id: "FR-5.11", req: "Complete Payroll SHALL update status to completed and reset to Step 0", priority: "P0" },
+          { id: "FR-5.5", req: "Employer contributions (PF, ESIC) SHALL be shown in the Net Pay footer as informational, not deducted from take-home", priority: "P0" },
+          { id: "FR-5.6", req: "Employee list panel SHALL support Department and Work State (Location) dropdown filters", priority: "P1" },
+          { id: "FR-5.7", req: "\"Publish Filtered\" button SHALL publish slips for all employees matching current filters", priority: "P1" },
+          { id: "FR-5.8", req: "Excel Upload Targeting SHALL accept an .xlsx file with an EMP_CODE column and publish matching employee slips", priority: "P1" },
+          { id: "FR-5.9", req: "\"Download All\" SHALL export all salary slips as a multi-sheet Excel workbook (one sheet per employee)", priority: "P0" },
+          { id: "FR-5.10", req: "\"Print / Save PDF\" SHALL print the currently viewed salary slip using native browser print dialog", priority: "P0" },
+          { id: "FR-5.11", req: "\"Complete Payroll\" SHALL update payrun status to completed and reset the view to Step 0", priority: "P0" },
         ]
       },
     ]
@@ -488,74 +491,81 @@ export const FRD_SECTIONS = [
           { id: "F-12", name: "Accepted Arrear Days", formula: "acceptedDays = min(requestedDays, maxEligibleDays)", notes: "Auto-clamped" },
           { id: "F-13", name: "Arrears for Single Entry", formula: "arrear = (historicalGross / historicalMonthDays) × acceptedDays", notes: "Daily rate × days" },
           { id: "F-14", name: "Total Arrears", formula: "arrearsPay = SUM(arrear) for all entries", notes: "" },
-          { id: "F-15", name: "Arrear Component Breakup", formula: "componentArrear = arrearsPay × (componentAmount / totalEarningComponents)", notes: "Pro-rata" },
+          { id: "F-15", name: "Arrear Component Breakup", formula: "componentArrear = arrearsPay × (componentAmount / totalEarningComponents)", notes: "Pro-rata by component weight" },
         ]
       },
       {
         group: "6.5 Gross Salary",
         items: [
-          { id: "F-16", name: "Standard Gross", formula: "standardGross = standardBasic + standardHRA + standardSpecial + variableTarget + reimbursements", notes: "Pre-proration" },
-          { id: "F-17", name: "Gross Salary", formula: "grossSalary = basic + hra + special + OT + arrears + leaveEncashment + variable + reimbursements", notes: "Post-proration" },
+          { id: "F-16", name: "Standard Gross", formula: "standardGross = standardBasic + standardHRA + standardSpecial + variableTarget + (reimbursements if monthly strategy)", notes: "Pre-proration gross" },
+          { id: "F-17", name: "Gross Salary", formula: "grossSalary = basic + hra + special + overtimePay + arrearsPay + leaveEncashmentPay + variablePay + (reimbursements × attendanceFactor if monthly strategy)", notes: "Post-proration actual gross" },
         ]
       },
       {
         group: "6.6 Tax Projection",
         items: [
-          { id: "F-20", name: "Projected Annual Gross", formula: "annualGross = ytdGross + currentGross + (standardGross × futureMonths)", notes: "" },
-          { id: "F-23", name: "Exit Months Adjustment", formula: "exitMonths = ceil((exitDate - payrollStartDate) / (1000×60×60×24×30))", notes: "Overrides monthsRemaining" },
+          { id: "F-18", name: "Past Months in FY", formula: "pastMonths = (payrollMonth >= 3) ? (payrollMonth - 3) : (payrollMonth + 9)", notes: "April = month 3 → 0 past months" },
+          { id: "F-19", name: "Future Months in FY", formula: "futureMonths = max(0, effectiveMonthsRemaining - 1)", notes: "Excludes current month" },
+          { id: "F-20", name: "Projected Annual Gross", formula: "annualGross = ytdGross + currentGross + (standardGross × futureMonths)", notes: "If no YTD data: standardGross × pastMonths replaces ytdGross" },
+          { id: "F-21", name: "Projected Annual Basic", formula: "projectedAnnualBasic = ytdBasic + currentBasic + (standardBasic × futureMonths)", notes: "" },
+          { id: "F-22", name: "Projected Annual HRA", formula: "projectedAnnualHRA = ytdHRA + currentHRA + (standardHRA × futureMonths)", notes: "" },
+          { id: "F-23", name: "Exit Months Adjustment", formula: "exitMonths = ceil((exitDate - payrollStartDate) / (1000 × 60 × 60 × 24 × 30))", notes: "Overrides monthsRemaining if smaller" },
         ]
       },
       {
         group: "6.7 HRA Exemption (Old Regime)",
         items: [
-          { id: "F-24", name: "HRA — Actual", formula: "hraActual = projectedAnnualHRA", notes: "" },
-          { id: "F-25", name: "HRA — Rent Excess", formula: "hraRentExcess = max(0, annualRent - 0.10 × projectedAnnualBasic)", notes: "" },
-          { id: "F-26", name: "HRA — City Limit", formula: "hraCityLimit = (isMetro ? 0.50 : 0.40) × projectedAnnualBasic", notes: "Metro = 50%" },
-          { id: "F-27", name: "HRA Exemption", formula: "hraExempt = min(hraActual, hraRentExcess, hraCityLimit)", notes: "Least of three" },
+          { id: "F-24", name: "HRA Component 1 — Actual HRA", formula: "hraActual = projectedAnnualHRA", notes: "Total HRA received in FY" },
+          { id: "F-25", name: "HRA Component 2 — Rent Excess", formula: "hraRentExcess = max(0, annualRent - 0.10 × projectedAnnualBasic)", notes: "Rent paid minus 10% of Basic" },
+          { id: "F-26", name: "HRA Component 3 — City Limit", formula: "hraCityLimit = (isMetro ? 0.50 : 0.40) × projectedAnnualBasic", notes: "Metro = 50%, Non-Metro = 40%" },
+          { id: "F-27", name: "HRA Exemption", formula: "hraExempt = min(hraActual, hraRentExcess, hraCityLimit)", notes: "Least of the three" },
         ]
       },
       {
         group: "6.8 Taxable Income",
         items: [
-          { id: "F-28", name: "Old Regime Deductions", formula: "deductions = min(1.5L, 80C) + min(25k/50k, 80D) + NPS + HomeLoan + ... + hraExempt", notes: "Section 80C/80D/etc" },
-          { id: "F-29", name: "Old Regime Taxable", formula: "taxable = max(0, annualGross - deductions)", notes: "" },
-          { id: "F-30", name: "New Regime Taxable", formula: "taxable = max(0, annualGross - 75000)", notes: "Standard Ded. only" },
+          { id: "F-28", name: "Old Regime — Total Deductions", formula: "totalDeductions = min(150000, 80C) + min(25000, 80D_self) + min(parentLimit, 80D_parents) + min(50000, NPS) + min(200000, homeLoan) + 80GE + 80TTA + LTA + 50000 + hraExempt + leaveEncashmentExempt", notes: "parentLimit = 50000 if senior, 25000 otherwise" },
+          { id: "F-29", name: "Old Regime — Taxable Income", formula: "taxableIncome = max(0, annualGross - totalDeductions)", notes: "" },
+          { id: "F-30", name: "New Regime — Taxable Income", formula: "taxableIncome = max(0, annualGross - 75000 - leaveEncashmentExempt)", notes: "Only standard deduction applies" },
         ]
       },
       {
         group: "6.9 Tax Computation",
         items: [
-          { id: "F-31", name: "Annual Tax", formula: "annualTax = baseTax × 1.04", notes: "4% H&E Cess" },
-          { id: "F-32", name: "Old Regime 87A Rebate", formula: "if taxableIncome ≤ 500000 then annualTax = 0", notes: "" },
-          { id: "F-33", name: "New Regime 87A Rebate", formula: "if taxableIncome ≤ 1200000 then annualTax = 0", notes: "" },
+          { id: "F-31", name: "Annual Tax (any regime)", formula: "annualTax = baseTax × 1.04", notes: "baseTax from slab computation, 1.04 = 4% H&E Cess" },
+          { id: "F-32", name: "Old Regime — 87A Rebate", formula: "if taxableIncome <= 500000 then annualTax = 0", notes: "" },
+          { id: "F-33", name: "New Regime — 87A Rebate", formula: "if taxableIncome <= 1200000 then annualTax = 0", notes: "" },
         ]
       },
       {
         group: "6.10 Monthly TDS",
         items: [
           { id: "F-34", name: "Remaining Tax", formula: "remainingTax = max(0, annualTax - tdsDeductedSoFar)", notes: "" },
-          { id: "F-35", name: "Monthly TDS", formula: "tds = remainingTax / effectiveMonthsRemaining", notes: "Spread evenly" },
-          { id: "F-36", name: "Exit TDS Auto-Cap", formula: "if (exit_date AND tds > netPayBeforeTDS) then tds = max(0, netPayBeforeTDS)", notes: "Prevents negative net" },
+          { id: "F-35", name: "Monthly TDS", formula: "tds = remainingTax / effectiveMonthsRemaining", notes: "Spread evenly across remaining FY months" },
+          { id: "F-36", name: "Exit TDS Auto-Cap", formula: "if (exit_date AND tds > netPayBeforeTDS) then tds = max(0, netPayBeforeTDS)", notes: "Prevents negative net pay" },
         ]
       },
       {
         group: "6.11 Statutory Deductions",
         items: [
-          { id: "F-37", name: "EPF (Flat Ceiling)", formula: "pfEmployee = min(1800, standardBasic × 0.12)", notes: "Default" },
-          { id: "F-38", name: "EPF (Actual Basic)", formula: "pfEmployee = basic × 0.12", notes: "No ceiling" },
-          { id: "F-39", name: "EPF (Prorated)", formula: "pfEmployee = min(1800 × attendanceFactor, basic × 0.12)", notes: "" },
-          { id: "F-43", name: "ESIC Employee", formula: "esiEmployee = (gross ≤ 21000) ? gross × 0.0075 : 0", notes: "0.75%" },
-          { id: "F-44", name: "ESIC Employer", formula: "esiEmployer = (gross ≤ 21000) ? gross × 0.0325 : 0", notes: "3.25%" },
-          { id: "F-45", name: "Professional Tax", formula: "pt = getPT(work_state, gross, month, ptMode, doj, year)", notes: "State-specific" },
-          { id: "F-46", name: "Labour Welfare Fund", formula: "lwf = getLWF(work_state, month, doj, year)", notes: "State-specific" },
+          { id: "F-37", name: "EPF Employee (Flat Ceiling)", formula: "pfEmployee = min(1800, standardBasic × 0.12)", notes: "Default method" },
+          { id: "F-38", name: "EPF Employee (Actual Basic)", formula: "pfEmployee = basic × 0.12", notes: "No ceiling" },
+          { id: "F-39", name: "EPF Employee (Prorated)", formula: "pfEmployee = min(1800 × attendanceFactor, basic × 0.12)", notes: "Ceiling scales with attendance" },
+          { id: "F-40", name: "EPF Employer", formula: "pfEmployer = pfEmployee", notes: "Mirrors employee contribution" },
+          { id: "F-41", name: "EPF — EPS Component", formula: "pfEps = min(1250, pfEmployer × (8.33 / 12))", notes: "Pension fund allocation" },
+          { id: "F-42", name: "EPF — ER Share", formula: "pfErShare = pfEmployer - pfEps", notes: "Remaining employer PF" },
+          { id: "F-43", name: "ESIC Employee", formula: "esiEmployee = (grossSalary <= 21000) ? grossSalary × 0.0075 : 0", notes: "0.75% if eligible" },
+          { id: "F-44", name: "ESIC Employer", formula: "esiEmployer = (grossSalary <= 21000) ? grossSalary × 0.0325 : 0", notes: "3.25% if eligible" },
+          { id: "F-45", name: "Professional Tax", formula: "pt = getPT(work_state, grossSalary, payrollMonth, ptMode, doj, year)", notes: "State-specific slab function (see Section 8.4)" },
+          { id: "F-46", name: "Labour Welfare Fund", formula: "lwf = getLWF(work_state, payrollMonth, doj, year)", notes: "State-specific fixed amounts (see Section 8.4)" },
         ]
       },
       {
         group: "6.12 Net Pay",
         items: [
-          { id: "F-47", name: "Total Deductions", formula: "totalDeductions = pfEmployee + esiEmployee + pt + lwf + employeeDeductions + tds", notes: "" },
-          { id: "F-48", name: "Net Pay", formula: "netPay = grossSalary - totalDeductions + (reimbursements if year-end)", notes: "" },
-          { id: "F-49", name: "Retirement Leave Encashment Exempt", formula: "leaveEncashmentExempt = (exit_reason === 'Retirement') ? min(leaveEncashmentPay, 2500000) : 0", notes: "₹25L max u/s 10(10AA)" },
+          { id: "F-47", name: "Total Deductions", formula: "totalDeductions = pfEmployee + esiEmployee + pt + lwf + employeeDeductions + tds", notes: "employeeDeductions = custom deductions from salary structure + manual ad-hoc deduction" },
+          { id: "F-48", name: "Net Pay", formula: "netPay = grossSalary - totalDeductions + (reimbursements if year-end strategy)", notes: "Reimbursements added back if not already in gross" },
+          { id: "F-49", name: "Retirement Leave Encashment Exempt", formula: "leaveEncashmentExempt = (exit_reason === 'Retirement') ? min(leaveEncashmentPay, 2500000) : 0", notes: "₹25L max under Section 10(10AA)" },
         ]
       },
     ]
@@ -672,7 +682,7 @@ Outputs: Monthly computed payroll including earnings breakdown, statutory deduct
       oldRegime: {
         standardDeduction: "₹50,000",
         rebate: "Full rebate u/s 87A if taxable income ≤ ₹5,00,000",
-        notes: "Eligible for Ch VI-A (80C, 80D, 24b) and HRA exemption u/s 10(13A).",
+        notes: "Eligible for Chapter VI-A deductions (80C, 80D, 80CCD, 24(b), 80G, 80E, 80TTA/TTB). HRA Exemption u/s 10(13A): min(Actual HRA, Rent - 10% Basic, 50%/40% Basic).",
         rows: [
           ["Up to ₹2,50,000", "Nil"],
           ["₹2,50,001 – ₹5,00,000", "5%"],
@@ -694,14 +704,14 @@ Outputs: Monthly computed payroll including earnings breakdown, statutory deduct
         headers: ["Category", "States / Details"],
         columns: [
           ["Monthly States", "KA, MH, WB, GJ, AP, TG, JH, AS, MP"],
-          ["Half-Yearly States", "TN, KL, PY — lump_sum or prorate modes"],
+          ["Half-Yearly States", "TN, KL, PY — with lump_sum (deduct in Sept/Mar) or prorate (monthly) modes"],
           ["Annual States", "OD, SK, BR, MZ — deducted in June"],
           ["Exempt States", "DL, RJ, HR, UP, PB, HP, UK, GA, CH"]
         ]
       },
       {
         name: "Labour Welfare Fund (LWF)",
-        description: "Biannual/Annual Deductions",
+        description: "State-specific biannual/annual deductions",
         headers: ["State / Group", "Contribution Timeline"],
         columns: [
           ["KA, MH, GJ", "June & December"],
@@ -712,8 +722,8 @@ Outputs: Monthly computed payroll including earnings breakdown, statutory deduct
       },
       {
         name: "EPF Calculation Methods",
-        description: "Employer/Employee configuration",
-        headers: ["Method ID", "Computation Logic"],
+        description: "Statutory Methods",
+        headers: ["Method", "Logic"],
         columns: [
           ["flat_ceiling", "min(₹1,800, Basic × 12%) — default"],
           ["actual_basic", "Basic × 12% — no ceiling"],
@@ -735,7 +745,7 @@ Outputs: Monthly computed payroll including earnings breakdown, statutory deduct
       { key: "epfCalculationMethod", options: "flat_ceiling / actual_basic / prorated_ceiling", effect: "EPF computation method" },
       { key: "ptHalfYearlyMode", options: "lump_sum / prorate", effect: "PT deduction frequency for half-yearly states" },
       { key: "lopCalculationMethod", options: "calendar / working / pay_period", effect: "LOP day calculation basis" },
-      { key: "prorationType", options: "dynamic / fixed30", effect: "Calendar days vs fixed 30" },
+      { key: "prorationType", options: "dynamic / fixed30", effect: "Whether to use actual calendar days or fixed 30" },
     ]
   },
   {
@@ -744,40 +754,32 @@ Outputs: Monthly computed payroll including earnings breakdown, statutory deduct
     title: "Salary Status Management",
     statuses: [
       { status: "active", badge: "—", behavior: "Normal payroll processing. Default for all employees." },
-      { status: "withheld", badge: "WITHHELD", behavior: "Auto-excluded from Select All. If manually included, engine returns zero net pay with salaryWithheld = true." },
-      { status: "absconding", badge: "ABSCONDING", behavior: "Same as withheld, with different badge (red) and reason string." },
-      { status: "fnf_pending", badge: "FNF", behavior: "Processes normally. Engine adds advisory warning: \"This computation is flagged as Full & Final (FnF) Pending.\"" },
+      { status: "withheld", badge: "WITHHELD", behavior: "Employee is excluded from \"Select All\" and auto-selection. If manually included, engine returns zero net pay with salaryWithheld = true and a bypass message." },
+      { status: "absconding", badge: "ABSCONDING", behavior: "Same as withheld, with a different visual badge (red border) and reason string." },
+      { status: "fnf_pending", badge: "FNF", behavior: "Employee processes normally but engine adds a validation warning: \"This computation is flagged as Full and Final (FnF) Pending.\" Serves as an accounting-attention flag." },
     ]
   },
   {
     id: "correction",
     number: "10",
     title: "Post-Finalization Correction Workflow",
-    content: `The unlock workflow allows Finance Admins to correct finalized payruns while maintaining a complete audit trail.
-
-1. Admin clicks Unlock on a confirmed or completed payrun in Payrun History
-2. System displays a modal prompt for a mandatory unlock reason
-3. Admin types the reason text and submits
-4. System calls updatePayrunStatus → status set to "reviewed"
-5. System calls addPayrunAuditLog → appends { action, reason, user, timestamp } to audit_logs JSONB array
-6. Success toast displayed, payrun re-opens at Step 1 for corrections
-7. Admin can re-adjust salaries, re-confirm, and re-export compliance files`,
+    content: `The unlock workflow allows Finance Admins to correct finalized payruns while maintaining a complete audit trail.`,
     diagram: `sequenceDiagram
     actor Admin as Finance Admin
     participant UI as Payrun History UI
     participant API as Supabase API Layer
     participant DB as payruns Table in PostgreSQL
 
-    Admin->>UI: Clicks Unlock button on confirmed/completed payrun
-    UI->>Admin: Displays modal prompt for mandatory unlock reason
-    Admin->>UI: Types unlock reason text and submits
-    UI->>API: Calls updatePayrunStatus (payrun ID, status: reviewed)
-    API->>DB: UPDATE payruns SET status = reviewed
-    UI->>API: Calls addPayrunAuditLog (payrun ID, action, reason, user, timestamp)
-    API->>DB: Append JSON object to audit_logs JSONB array
-    UI->>Admin: Displays success toast confirming unlock
-    UI->>UI: Calls openPayrun to navigate to Step 1 for corrections
-    Note over Admin,DB: Admin can now re-adjust salaries, re-confirm, and re-export files`,
+    Admin->>UI: Clicks the Unlock button on a confirmed or completed payrun entry
+    UI->>Admin: Displays a modal prompt asking for a mandatory reason for unlocking the payrun
+    Admin->>UI: Types the unlock reason text and submits
+    UI->>API: Calls updatePayrunStatus with the payrun ID and new status of reviewed
+    API->>DB: Executes UPDATE on payruns table setting status to reviewed
+    UI->>API: Calls addPayrunAuditLog with the payrun ID, action type of unlock, reason text, user identity, and current ISO timestamp
+    API->>DB: Appends a new JSON object to the audit_logs JSONB array column in the payruns table
+    UI->>Admin: Displays a success toast confirming the payrun has been unlocked
+    UI->>UI: Calls openPayrun to re-load the payrun and navigate to Step 1 for corrections
+    Note over Admin,DB: The admin can now re-adjust salaries, re-confirm, and re-export compliance files`,
     callout: {
       type: "warning",
       text: "The audit log is append-only. Every unlock creates a permanent record with the reason, acting user, and ISO timestamp. This data cannot be deleted through the UI."
@@ -789,7 +791,7 @@ Outputs: Monthly computed payroll including earnings breakdown, statutory deduct
     title: "YTD (Year-To-Date) Aggregation Logic",
     content: `YTD values are computed by querying all payrun_adjustments.computed_data snapshots from prior confirmed/completed payruns within the same Financial Year (April–March).
 
-Aggregated Fields:
+**Aggregated Fields:**
 • ytdGross — Cumulative Gross Salary
 • ytdBasic — Cumulative Basic
 • ytdHRA — Cumulative HRA
@@ -807,11 +809,11 @@ These YTD values are injected into the engine and additionally displayed in the 
     exports: [
       { name: "Bank Transfer", format: "CSV", content: "Bank-specific column ordering (HDFC, ICICI, SBI, Axis, Generic)" },
       { name: "EPF ECR v2", format: "TXT", content: "UAN #~# Gross #~# EE(12%) #~# EPS(8.33%) #~# EPF-ER(3.67%)" },
-      { name: "ESIC Return", format: "TXT", content: "IP Number | Days Worked | Gross | EE 0.75% | ER 3.25%" },
+      { name: "ESIC Return", format: "TXT", content: "IP Number | Days Worked | Gross | EE Contrib (0.75%) | ER Contrib (3.25%)" },
       { name: "TDS 24Q", format: "XLSX", content: "PAN, Name, Gross, Annual Tax, Monthly TDS, Regime" },
-      { name: "Professional Tax", format: "ZIP (XLSX per state)", content: "Grouped by work_state, each state as separate XLSX" },
-      { name: "LWF", format: "ZIP (XLSX per state)", content: "Grouped by work_state, each state as separate XLSX" },
-      { name: "Payroll Register", format: "XLSX", content: "22-column comprehensive register" },
+      { name: "Professional Tax", format: "ZIP (XLSX per state)", content: "Grouped by work_state, each state exported as separate XLSX" },
+      { name: "LWF", format: "ZIP (XLSX per state)", content: "Grouped by work_state, each state exported as separate XLSX" },
+      { name: "Payroll Register", format: "XLSX", content: "22-column comprehensive register with all earnings, deductions, and employer contributions" },
     ]
   },
   {
@@ -843,42 +845,44 @@ These YTD values are injected into the engine and additionally displayed in the 
     title: "Prerequisites and Assumptions",
     prereqGroups: [
       {
-        group: "Infrastructure Prerequisites",
+        group: "15.1 Infrastructure Prerequisites",
         items: [
-          { prereq: "Supabase Project", desc: "A live Supabase project with PostgreSQL database. URL and anon key configured in .env." },
-          { prereq: "Database Tables", desc: "All 5 tables created with schema from supabase_updates.sql." },
-          { prereq: "Row-Level Security", desc: "RLS policies enabled. Current: permissive; production: role-based." },
-          { prereq: "Storage Bucket", desc: "employee-proofs bucket for reimbursement proof uploads." },
-          { prereq: "Browser", desc: "Chrome 90+, Edge 90+, Firefox 88+, Safari 14+ with ES2020+ and Blob API." },
-          { prereq: "CDN Access", desc: "Internet required for JSZip via ESM CDN for ZIP export generation." },
+          { prereq: "Supabase Project", desc: "A live Supabase project with PostgreSQL database must be provisioned and accessible. The Supabase URL and anon key must be configured in the application." },
+          { prereq: "Database Tables", desc: "All 5 tables (employees, payruns, payrun_adjustments, company_settings, employee_submissions) must be created with the schema defined in Section 3. The supabase_updates.sql migration script must be executed against the database before first use." },
+          { prereq: "Row-Level Security", desc: "RLS policies must be enabled on all tables. The current implementation uses a permissive \"allow all\" policy; production deployments should implement role-based access control." },
+          { prereq: "Storage Bucket", desc: "An employee-proofs storage bucket must exist in Supabase for reimbursement proof file uploads." },
+          { prereq: "Browser", desc: "Modern browser (Chrome 90+, Edge 90+, Firefox 88+, Safari 14+) with JavaScript enabled. The system uses ES2020+ features, dynamic import(), and the Blob API." },
+          { prereq: "CDN Access", desc: "Internet connectivity is required for loading JSZip via ESM CDN (cdn.jsdelivr.net) for state-wise ZIP export generation." },
         ]
       },
       {
-        group: "Data Prerequisites",
+        group: "15.2 Data Prerequisites",
         items: [
-          { prereq: "Employee Records", desc: "Active employee with valid salary_structure (JSON array) must exist." },
-          { prereq: "Salary Structure", desc: "Must contain at least one 'earnings_basic' component." },
-          { prereq: "Company Settings", desc: "Singleton row must exist in company_settings table." },
-          { prereq: "Financial Year", desc: "Aggregations assume April (3) to March (2) convention." },
-          { prereq: "Input Mode", desc: "input_mode (monthly/annual) must match stored amount types." },
+          { prereq: "Employee Records", desc: "At least one active employee must exist in the employees table with a valid salary_structure (array of salary component objects) before a payrun can be initiated." },
+          { prereq: "Salary Structure", desc: "Each employee's salary_structure must contain at minimum one earnings_basic type component. HRA and Special Allowance components are expected but optional." },
+          { prereq: "Company Settings", desc: "A singleton company_settings row must exist. If absent, the system falls back to hardcoded defaults defined in settingsStore.js." },
+          { prereq: "Financial Year Convention", desc: "The Financial Year runs from April (month index 3) to March (month index 2). All YTD aggregation, month-remaining calculations, and history queries assume this convention." },
+          { prereq: "Input Mode Consistency", desc: "The input_mode field on each employee must accurately reflect whether the salary_structure amounts are stored as monthly or annual values. Mismatched modes will produce incorrect computations." },
         ]
       },
       {
-        group: "Computation Assumptions",
+        group: "15.3 Computation Assumptions",
         items: [
-          { prereq: "26 Working Days/Month", desc: "Leave encashment: standardGross / 26." },
-          { prereq: "Calendar Proration", desc: "(daysInMonth - lopDays) / daysInMonth using actual month days." },
-          { prereq: "Single FY per Payrun", desc: "Cross-FY payruns not supported." },
-          { prereq: "EPF Ceiling", desc: "flat_ceiling method capped at ₹1,800/month." },
-          { prereq: "ESIC Ceiling", desc: "₹21,000 gross month threshold for compliance." },
-          { prereq: "Metro Classification", desc: "Mumbai/Delhi/DNC/Kolkata/Chennai = 50% Basic HRA limit." },
-          { prereq: "Tax Regime Lock", desc: "Override at Step 2 is local to payrun; doesn't edit master employee record." },
-          { prereq: "YTD Confirmed Only", desc: "Aggregation excludes draft/initiated payruns." },
-          { prereq: "Forward-Looking TDS", desc: "No retroactive recalculation; spread remains forward-only." },
-          { prereq: "Statutory Slab Accuracy", desc: "PT/LWF based on govt. notifications at build date." },
-          { prereq: "ER PF = EE PF", desc: "Employer mirrors contribution; EPS/ER split for ECR." },
-          { prereq: "Reimbursement Strategy", desc: "Support for 'monthly' (taxed) and 'year_end' (tax-free) flows." },
-          { prereq: "Mid-Month Joiners", desc: "Manual adjustment of LOP/Days in Step 1 required." },
+          { prereq: "26 Working Days per Month", desc: "Leave encashment daily rate is computed as standardGross / 26, assuming 26 working days in a month." },
+          { prereq: "Calendar-Day Proration", desc: "LOP proration is based on calendar days: (daysInMonth - lopDays) / daysInMonth. The actual number of calendar days in the payroll month is used (28/29/30/31)." },
+          { prereq: "Single Financial Year per Payrun", desc: "A payrun is always associated with a single Financial Year. Cross-FY payruns (e.g., a payrun for March with adjustments from April) are not supported." },
+          { prereq: "EPF Wage Ceiling", desc: "Under flat_ceiling method, the statutory EPF contribution ceiling is ₹1,800 per month (based on ₹15,000 basic wage ceiling × 12%)." },
+          { prereq: "ESIC Wage Ceiling", desc: "ESIC applicability threshold is ₹21,000 gross salary per month. Employees earning above this are exempt from ESIC." },
+          { prereq: "Metro City Classification", desc: "Only Mumbai, Delhi, New Delhi, Kolkata, and Chennai are classified as Metro cities for HRA exemption (50% of Basic). All other cities use the Non-Metro rate (40% of Basic)." },
+          { prereq: "Tax Regime Lock", desc: "The tax regime (Old/New) can be changed per-payrun per-employee at Step 2, but this override is local to the payrun. The employee's master record regime is not modified." },
+          { prereq: "YTD from Confirmed Payruns", desc: "YTD aggregation only considers payruns with status confirmed or completed. Draft or initiated payruns are excluded from historical data." },
+          { prereq: "Single Payrun per Month", desc: "The system warns against duplicate payruns for the same month but does not strictly enforce uniqueness. Multiple payruns for the same month may exist if the user bypasses the warning." },
+          { prereq: "No Retroactive Tax Revision", desc: "The engine computes tax based on the current state of declarations and projections. It does not retroactively recalculate prior months' TDS if investments change. The spread is only forward-looking." },
+          { prereq: "Client-Side Only", desc: "All payroll computations run in the browser. There is no server-side validation of computed values. The computed_data snapshot persisted to Supabase is a record of what the client calculated, not a server-verified result." },
+          { prereq: "Statutory Slab Accuracy", desc: "PT and LWF slabs are based on publicly available state government notifications as of the system build date. State regulatory changes after deployment require manual code updates to getPT() and getLWF() functions." },
+          { prereq: "Employer PF Equals Employee PF", desc: "The system assumes employer PF contribution equals employee PF contribution (pfEmployer = pfEmployee). The EPS (8.33% of 12%) and EPF-ER (3.67%) split is applied on the employer side for ECR reporting." },
+          { prereq: "Reimbursement Tax Strategy", desc: "Two strategies are supported: monthly (reimbursements included in monthly gross and taxed) and year_end (reimbursements excluded from gross and added to net pay). The default is year_end." },
+          { prereq: "No Mid-Month Joining Proration", desc: "The system does not automatically prorate salary for employees joining mid-month. The admin must manually adjust LOP days or Days in Month in Step 1 to account for partial-month joining." },
         ]
       },
     ]
@@ -893,7 +897,7 @@ These YTD values are injected into the engine and additionally displayed in the 
       { id: "NFR-3", req: "ZIP file generation for state-wise exports SHALL use dynamic ESM import of JSZip (CDN-based)" },
       { id: "NFR-4", req: "Salary slip printing SHALL use native window.print() with DOM injection" },
       { id: "NFR-5", req: "All monetary values SHALL be rounded to nearest integer for display and export" },
-      { id: "NFR-6", req: "Indian number formatting (en-IN locale) SHALL be used consistently" },
+      { id: "NFR-6", req: "Indian number formatting (en-IN locale) SHALL be used consistently across all monetary displays" },
     ]
   },
   {
