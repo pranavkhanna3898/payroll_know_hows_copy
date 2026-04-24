@@ -14,11 +14,12 @@ const STATUS_COLORS = {
   completed: { bg: '#dcfce7', color: '#166534', label: 'Completed' },
 };
 
-export default function PayrollOps_Initiate({ store, onInitiate, onOpenPayrun, onDeletePayrun }) {
+export default function PayrollOps_Initiate({ store, onInitiate, onOpenPayrun, onDeletePayrun, onUnlockPayrun }) {
   const now = new Date();
   const [month, setMonth] = useState(now.getMonth() + 1);
   const [year, setYear] = useState(now.getFullYear());
-  const [selected, setSelected] = useState(store.employees.map(e => e.id));
+  const initialSelection = store.employees.filter(e => e.salary_status !== 'withheld' && e.salary_status !== 'absconding').map(e => e.id);
+  const [selected, setSelected] = useState(initialSelection);
   const [view, setView] = useState('new'); // 'new' | 'history'
 
   const fmt = v => Math.round(v || 0).toLocaleString('en-IN');
@@ -29,7 +30,7 @@ export default function PayrollOps_Initiate({ store, onInitiate, onOpenPayrun, o
   const filtered = deptFilter === 'All' ? store.employees : store.employees.filter(e => e.department === deptFilter);
 
   const toggleEmp = id => setSelected(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
-  const selectAll = () => setSelected(filtered.map(e => e.id));
+  const selectAll = () => setSelected(filtered.filter(e => e.salary_status !== 'withheld' && e.salary_status !== 'absconding').map(e => e.id));
   const deselectAll = () => setSelected([]);
 
   const selectedEmps = store.employees.filter(e => selected.includes(e.id));
@@ -107,9 +108,14 @@ export default function PayrollOps_Initiate({ store, onInitiate, onOpenPayrun, o
                       <td style={{ padding: '10px 14px', borderBottom: '1px solid #f1f5f9' }}>{e.department}</td>
                       <td style={{ padding: '10px 14px', borderBottom: '1px solid #f1f5f9', color: '#64748b' }}>{e.date_of_joining}</td>
                       <td style={{ padding: '10px 14px', borderBottom: '1px solid #f1f5f9' }}>
-                        <span style={{ background: (e.tax_regime || 'new') === 'new' ? '#d1fae5' : '#fef3c7', color: (e.tax_regime || 'new') === 'new' ? '#065f46' : '#b45309', padding: '2px 8px', borderRadius: 12, fontSize: 11, fontWeight: 700 }}>
-                          {(e.tax_regime || 'new').toUpperCase()}
-                        </span>
+                        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                          <span style={{ background: (e.tax_regime || 'new') === 'new' ? '#d1fae5' : '#fef3c7', color: (e.tax_regime || 'new') === 'new' ? '#065f46' : '#b45309', padding: '2px 8px', borderRadius: 12, fontSize: 11, fontWeight: 700 }}>
+                            {(e.tax_regime || 'new').toUpperCase()}
+                          </span>
+                          {e.salary_status === 'withheld' && <span style={{ background: '#fee2e2', color: '#b91c1c', padding: '2px 8px', borderRadius: 12, fontSize: 11, fontWeight: 700 }}>WITHHELD</span>}
+                          {e.salary_status === 'absconding' && <span style={{ background: '#fef2f2', color: '#991b1b', border: '1px solid #fca5a5', padding: '1px 7px', borderRadius: 12, fontSize: 11, fontWeight: 700 }}>ABSCONDING</span>}
+                          {e.salary_status === 'fnf_pending' && <span style={{ background: '#e0e7ff', color: '#3730a3', padding: '2px 8px', borderRadius: 12, fontSize: 11, fontWeight: 700 }}>FNF</span>}
+                        </div>
                       </td>
                     </tr>
                   ))}
@@ -158,8 +164,11 @@ export default function PayrollOps_Initiate({ store, onInitiate, onOpenPayrun, o
                       <td style={{ padding: '10px 14px', borderBottom: '1px solid #f1f5f9' }}>
                         <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
                           <button onClick={() => onOpenPayrun(p)} style={{ padding: '5px 12px', background: '#e0e7ff', color: '#3730a3', border: 'none', borderRadius: 6, cursor: 'pointer', fontWeight: 600, fontSize: 12 }}>Open →</button>
-                          {p.status !== 'confirmed' && (
+                          {p.status !== 'confirmed' && p.status !== 'completed' && (
                             <button onClick={() => onDeletePayrun(p.id)} style={{ padding: '5px 8px', background: '#fee2e2', color: '#ef4444', border: 'none', borderRadius: 6, cursor: 'pointer', fontSize: 13, lineHeight: 1 }} title="Delete Draft">🗑️</button>
+                          )}
+                          {(p.status === 'confirmed' || p.status === 'completed') && (
+                            <button onClick={() => onUnlockPayrun(p.id)} style={{ padding: '5px 12px', background: '#fef3c7', color: '#b45309', border: 'none', borderRadius: 6, cursor: 'pointer', fontWeight: 600, fontSize: 12 }} title="Unlock for Corrections">🔓 Unlock</button>
                           )}
                         </div>
                       </td>

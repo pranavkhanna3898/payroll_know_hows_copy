@@ -14,6 +14,7 @@ function SalarySlip({ emp, monthLabel, companySettings }) {
   const today = new Date();
   const earningComps = emp.salaryComponents.filter(ct => ['earnings_basic','earnings_hra','earnings_allowance','variable'].includes(ct.type));
   const deductionComps = emp.salaryComponents.filter(ct => ct.type === 'employee_deduction');
+  const showYTD = companySettings?.showYTDOnPayslip === true;
 
   return (
     <div style={{
@@ -81,6 +82,7 @@ function SalarySlip({ emp, monthLabel, companySettings }) {
             <thead>
               <tr style={{ background: '#f0fdf4' }}>
                 <th style={{ padding: '6px 20px', textAlign: 'left', fontWeight: 600, color: '#475569', fontSize: 11 }}>Component</th>
+                {showYTD && <th style={{ padding: '6px 20px', textAlign: 'right', fontWeight: 600, color: '#475569', fontSize: 11 }}>YTD (₹)</th>}
                 <th style={{ padding: '6px 20px', textAlign: 'right', fontWeight: 600, color: '#475569', fontSize: 11 }}>Amount (₹)</th>
               </tr>
             </thead>
@@ -94,16 +96,33 @@ function SalarySlip({ emp, monthLabel, companySettings }) {
                     <td style={{ padding: '7px 20px', borderBottom: '1px solid #f1f5f9', color: isReim ? '#059669' : '#334155' }}>
                       {cp.name} {isReim ? '(Reim)' : ''}
                     </td>
+                    {showYTD && <td style={{ padding: '7px 20px', borderBottom: '1px solid #f1f5f9', textAlign: 'right', fontFamily: 'monospace', color: '#94a3b8' }}>₹{fmt(c.ytd?.components?.[cp.id] || amt)}</td>}
                     <td style={{ padding: '7px 20px', borderBottom: '1px solid #f1f5f9', textAlign: 'right', fontFamily: 'monospace' }}>₹{fmt(amt)}</td>
                   </tr>
                 );
               })}
-              {c.variablePay > 0 && <tr>
-                <td style={{ padding: '7px 20px', borderBottom: '1px solid #f1f5f9', color: '#b45309' }}>Variable / Incentive Pay</td>
-                <td style={{ padding: '7px 20px', borderBottom: '1px solid #f1f5f9', textAlign: 'right', fontFamily: 'monospace', color: '#b45309' }}>₹{fmt(c.variablePay)}</td>
-              </tr>}
+              {companySettings?.incentiveDisplayMode === 'breakup' ? (
+                c.components.filter(cp => cp.type === 'variable' && (cp.currentPayout > 0 || cp._resolved > 0)).map(cp => {
+                  const val = cp.currentPayout || cp._resolved || 0;
+                  if (val === 0) return null;
+                  return (
+                    <tr key={`var_${cp.id}`}>
+                      <td style={{ padding: '7px 20px', borderBottom: '1px solid #f1f5f9', color: '#b45309' }}>{cp.name} (Variable)</td>
+                      {showYTD && <td style={{ padding: '7px 20px', borderBottom: '1px solid #f1f5f9', textAlign: 'right', fontFamily: 'monospace', color: '#94a3b8' }}>-</td>}
+                      <td style={{ padding: '7px 20px', borderBottom: '1px solid #f1f5f9', textAlign: 'right', fontFamily: 'monospace', color: '#b45309' }}>₹{fmt(val)}</td>
+                    </tr>
+                  )
+                })
+              ) : (
+                c.variablePay > 0 && <tr>
+                  <td style={{ padding: '7px 20px', borderBottom: '1px solid #f1f5f9', color: '#b45309' }}>Variable / Incentive Pay</td>
+                  {showYTD && <td style={{ padding: '7px 20px', borderBottom: '1px solid #f1f5f9', textAlign: 'right', fontFamily: 'monospace', color: '#94a3b8' }}>-</td>}
+                  <td style={{ padding: '7px 20px', borderBottom: '1px solid #f1f5f9', textAlign: 'right', fontFamily: 'monospace', color: '#b45309' }}>₹{fmt(c.variablePay)}</td>
+                </tr>
+              )}
               {c.overtimePay > 0 && <tr>
                 <td style={{ padding: '7px 20px', borderBottom: '1px solid #f1f5f9', color: '#0891b2' }}>Overtime Pay</td>
+                {showYTD && <td style={{ padding: '7px 20px', borderBottom: '1px solid #f1f5f9', textAlign: 'right', fontFamily: 'monospace', color: '#94a3b8' }}>-</td>}
                 <td style={{ padding: '7px 20px', borderBottom: '1px solid #f1f5f9', textAlign: 'right', fontFamily: 'monospace' }}>₹{fmt(c.overtimePay)}</td>
               </tr>}
 
@@ -111,12 +130,14 @@ function SalarySlip({ emp, monthLabel, companySettings }) {
                 c.arrearsBreakup.map((bk, i) => (
                   <tr key={`arr_${i}`}>
                     <td style={{ padding: '7px 20px', borderBottom: '1px solid #f1f5f9', color: '#7c3aed' }}>{bk.name}</td>
+                    {showYTD && <td style={{ padding: '7px 20px', borderBottom: '1px solid #f1f5f9', textAlign: 'right', fontFamily: 'monospace', color: '#94a3b8' }}>-</td>}
                     <td style={{ padding: '7px 20px', borderBottom: '1px solid #f1f5f9', textAlign: 'right', fontFamily: 'monospace' }}>₹{fmt(bk.amount)}</td>
                   </tr>
                 ))
               ) : (
                 c.arrearsPay > 0 && <tr>
                   <td style={{ padding: '7px 20px', borderBottom: '1px solid #f1f5f9', color: '#7c3aed' }}>Arrears</td>
+                  {showYTD && <td style={{ padding: '7px 20px', borderBottom: '1px solid #f1f5f9', textAlign: 'right', fontFamily: 'monospace', color: '#94a3b8' }}>-</td>}
                   <td style={{ padding: '7px 20px', borderBottom: '1px solid #f1f5f9', textAlign: 'right', fontFamily: 'monospace' }}>₹{fmt(c.arrearsPay)}</td>
                 </tr>
               )}
@@ -124,6 +145,7 @@ function SalarySlip({ emp, monthLabel, companySettings }) {
             <tfoot>
               <tr style={{ background: '#dcfce7' }}>
                 <td style={{ padding: '10px 20px', fontWeight: 700, color: '#047857' }}>Gross Salary</td>
+                {showYTD && <td style={{ padding: '10px 20px', textAlign: 'right', fontWeight: 700, fontFamily: 'monospace', color: '#059669', fontSize: 12 }}>₹{fmt(c.ytd?.grossSalary || c.grossSalary)}</td>}
                 <td style={{ padding: '10px 20px', textAlign: 'right', fontWeight: 800, fontFamily: 'monospace', color: '#047857', fontSize: 14 }}>₹{fmt(c.grossSalary)}</td>
               </tr>
             </tfoot>
@@ -137,6 +159,7 @@ function SalarySlip({ emp, monthLabel, companySettings }) {
             <thead>
               <tr style={{ background: '#fff5f5' }}>
                 <th style={{ padding: '6px 20px', textAlign: 'left', fontWeight: 600, color: '#475569', fontSize: 11 }}>Component</th>
+                {showYTD && <th style={{ padding: '6px 20px', textAlign: 'right', fontWeight: 600, color: '#475569', fontSize: 11 }}>YTD (₹)</th>}
                 <th style={{ padding: '6px 20px', textAlign: 'right', fontWeight: 600, color: '#475569', fontSize: 11 }}>Amount (₹)</th>
               </tr>
             </thead>
@@ -147,17 +170,19 @@ function SalarySlip({ emp, monthLabel, companySettings }) {
                 return (
                   <tr key={cp.id}>
                     <td style={{ padding: '7px 20px', borderBottom: '1px solid #f1f5f9' }}>{cp.name}</td>
+                    {showYTD && <td style={{ padding: '7px 20px', borderBottom: '1px solid #f1f5f9', textAlign: 'right', fontFamily: 'monospace', color: '#94a3b8' }}>₹{fmt(c.ytd?.components?.[cp.id] || amt)}</td>}
                     <td style={{ padding: '7px 20px', borderBottom: '1px solid #f1f5f9', textAlign: 'right', fontFamily: 'monospace' }}>₹{fmt(amt)}</td>
                   </tr>
                 );
               })}
-              {c.pt > 0 && <tr><td style={{ padding: '7px 20px', borderBottom: '1px solid #f1f5f9' }}>Professional Tax</td><td style={{ padding: '7px 20px', textAlign: 'right', fontFamily: 'monospace', borderBottom: '1px solid #f1f5f9' }}>₹{fmt(c.pt)}</td></tr>}
-              {c.lwf > 0 && <tr><td style={{ padding: '7px 20px', borderBottom: '1px solid #f1f5f9' }}>LWF</td><td style={{ padding: '7px 20px', textAlign: 'right', fontFamily: 'monospace', borderBottom: '1px solid #f1f5f9' }}>₹{fmt(c.lwf)}</td></tr>}
-              {c.tds > 0 && <tr><td style={{ padding: '7px 20px', borderBottom: '1px solid #f1f5f9', color: '#dc2626' }}>TDS (Income Tax)</td><td style={{ padding: '7px 20px', textAlign: 'right', fontFamily: 'monospace', borderBottom: '1px solid #f1f5f9', color: '#dc2626' }}>₹{fmt(c.tds)}</td></tr>}
+              {c.pt > 0 && <tr><td style={{ padding: '7px 20px', borderBottom: '1px solid #f1f5f9' }}>Professional Tax</td>{showYTD && <td style={{ padding: '7px 20px', textAlign: 'right', fontFamily: 'monospace', borderBottom: '1px solid #f1f5f9', color: '#94a3b8' }}>-</td>}<td style={{ padding: '7px 20px', textAlign: 'right', fontFamily: 'monospace', borderBottom: '1px solid #f1f5f9' }}>₹{fmt(c.pt)}</td></tr>}
+              {c.lwf > 0 && <tr><td style={{ padding: '7px 20px', borderBottom: '1px solid #f1f5f9' }}>LWF</td>{showYTD && <td style={{ padding: '7px 20px', textAlign: 'right', fontFamily: 'monospace', borderBottom: '1px solid #f1f5f9', color: '#94a3b8' }}>-</td>}<td style={{ padding: '7px 20px', textAlign: 'right', fontFamily: 'monospace', borderBottom: '1px solid #f1f5f9' }}>₹{fmt(c.lwf)}</td></tr>}
+              {c.tds > 0 && <tr><td style={{ padding: '7px 20px', borderBottom: '1px solid #f1f5f9', color: '#dc2626' }}>TDS (Income Tax)</td>{showYTD && <td style={{ padding: '7px 20px', textAlign: 'right', fontFamily: 'monospace', borderBottom: '1px solid #f1f5f9', color: '#dc2626' }}>₹{fmt(c.ytd?.tds || c.tds)}</td>}<td style={{ padding: '7px 20px', textAlign: 'right', fontFamily: 'monospace', borderBottom: '1px solid #f1f5f9', color: '#dc2626' }}>₹{fmt(c.tds)}</td></tr>}
             </tbody>
             <tfoot>
               <tr style={{ background: '#fee2e2' }}>
                 <td style={{ padding: '10px 20px', fontWeight: 700, color: '#b91c1c' }}>Total Deductions</td>
+                {showYTD && <td style={{ padding: '10px 20px', textAlign: 'right', fontWeight: 700, fontFamily: 'monospace', color: '#ef4444', fontSize: 12 }}>₹{fmt(c.ytd?.totalDeductions || c.totalDeductions)}</td>}
                 <td style={{ padding: '10px 20px', textAlign: 'right', fontWeight: 800, fontFamily: 'monospace', color: '#b91c1c', fontSize: 14 }}>₹{fmt(c.totalDeductions)}</td>
               </tr>
             </tfoot>
@@ -168,7 +193,7 @@ function SalarySlip({ emp, monthLabel, companySettings }) {
       {/* Net Pay Banner */}
       <div style={{ background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)', padding: '18px 28px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <div style={{ color: 'white' }}>
-          <div style={{ fontSize: 12, opacity: 0.8, marginBottom: 2 }}>Net Pay (Take-Home)</div>
+          <div style={{ fontSize: 12, opacity: 0.8, marginBottom: 2 }}>Net Pay (Take-Home) {showYTD ? `(YTD: ₹${fmt(c.ytd?.netPay || c.netPay)})` : ''}</div>
           <div style={{ fontSize: 32, fontWeight: 900 }}>₹{fmt(c.netPay)}</div>
           <div style={{ fontSize: 11, opacity: 0.75 }}>
             ₹{fmt(c.grossSalary)} − ₹{fmt(c.totalDeductions)}
@@ -193,8 +218,42 @@ function SalarySlip({ emp, monthLabel, companySettings }) {
 
 export default function PayrollOps_SlipViewer({ payrunEmployees, activePayrun, toggleSlip, publishAll, companySettings, onBack, onComplete }) {
   const [selectedEmp, setSelectedEmp] = useState(payrunEmployees[0] || null);
+  const [filterDept, setFilterDept] = useState('');
+  const [filterLoc, setFilterLoc] = useState('');
+
   const monthLabel = activePayrun?.monthLabel || 'Current Month';
   const publishedSlips = activePayrun?.publishedSlips || [];
+
+  const filteredEmployees = payrunEmployees.filter(e => {
+    if (filterDept && e.department !== filterDept) return false;
+    if (filterLoc && e.work_state !== filterLoc) return false;
+    return true;
+  });
+
+  const depts = [...new Set(payrunEmployees.map(e => e.department))].filter(Boolean);
+  const locs = [...new Set(payrunEmployees.map(e => e.work_state))].filter(Boolean);
+
+  const handleExcelImport = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (evt) => {
+      const bstr = evt.target.result;
+      const wb = XLSX.read(bstr, { type: 'binary' });
+      const ws = wb.Sheets[wb.SheetNames[0]];
+      const data = XLSX.utils.sheet_to_json(ws);
+      const importedEmpCodes = data.map(r => String(r.EMP_CODE || r.Emp_Code || r['Emp Code'] || '')).filter(Boolean);
+      if (importedEmpCodes.length === 0) {
+        alert("No EMP_CODE column found in Excel.");
+        return;
+      }
+      const matchedIds = payrunEmployees.filter(emp => importedEmpCodes.includes(emp.empCode)).map(emp => emp.id);
+      publishAll(matchedIds);
+      alert(`Matched and published ${matchedIds.length} employees from Excel targeting.`);
+    };
+    reader.readAsBinaryString(file);
+    e.target.value = null;
+  };
 
   const handleDownloadAll = () => {
     const wb = XLSX.utils.book_new();
@@ -244,18 +303,36 @@ export default function PayrollOps_SlipViewer({ payrunEmployees, activePayrun, t
             </div>
 
             <div style={{ padding: 10 }}>
-              <button onClick={() => publishAll(payrunEmployees.map(e => e.id))}
-                style={{ width: '100%', padding: '8px', background: '#d1fae5', color: '#065f46', border: 'none', borderRadius: 6, cursor: 'pointer', fontWeight: 700, fontSize: 12, marginBottom: 10 }}>
-                📢 Publish All ({payrunEmployees.length})
+              <div style={{ display: 'flex', gap: 6, marginBottom: 10 }}>
+                <select value={filterDept} onChange={e => setFilterDept(e.target.value)} style={{ flex: 1, padding: 6, fontSize: 11, borderRadius: 4, border: '1px solid #cbd5e1' }}>
+                  <option value="">All Depts</option>
+                  {depts.map(d => <option key={d}>{d}</option>)}
+                </select>
+                <select value={filterLoc} onChange={e => setFilterLoc(e.target.value)} style={{ flex: 1, padding: 6, fontSize: 11, borderRadius: 4, border: '1px solid #cbd5e1' }}>
+                  <option value="">All States</option>
+                  {locs.map(l => <option key={l}>{l}</option>)}
+                </select>
+              </div>
+
+              <button onClick={() => publishAll(filteredEmployees.map(e => e.id))}
+                style={{ width: '100%', padding: '8px', background: '#d1fae5', color: '#065f46', border: 'none', borderRadius: 6, cursor: 'pointer', fontWeight: 700, fontSize: 12, marginBottom: 8 }}>
+                📢 Publish Filtered ({filteredEmployees.length})
               </button>
-              <button onClick={handleDownloadAll}
-                style={{ width: '100%', padding: '8px', background: '#e0e7ff', color: '#3730a3', border: 'none', borderRadius: 6, cursor: 'pointer', fontWeight: 700, fontSize: 12, marginBottom: 10 }}>
-                ⬇ Download All (Excel)
-              </button>
+              
+              <div style={{ display: 'flex', gap: 8, marginBottom: 10 }}>
+                <button onClick={handleDownloadAll}
+                  style={{ flex: 1, padding: '8px', background: '#e0e7ff', color: '#3730a3', border: 'none', borderRadius: 6, cursor: 'pointer', fontWeight: 700, fontSize: 11 }}>
+                  ⬇ Excel (All)
+                </button>
+                <label style={{ flex: 1, padding: '8px', background: '#fef3c7', color: '#b45309', borderRadius: 6, cursor: 'pointer', fontWeight: 700, fontSize: 11, textAlign: 'center' }}>
+                  ⬆ XL Target
+                  <input type="file" accept=".xlsx, .xls, .csv" onChange={handleExcelImport} style={{ display: 'none' }} />
+                </label>
+              </div>
             </div>
 
-            <div style={{ borderTop: '1px solid #e2e8f0' }}>
-              {payrunEmployees.map(e => {
+            <div style={{ borderTop: '1px solid #e2e8f0', maxHeight: 'calc(100vh - 200px)', overflowY: 'auto' }}>
+              {filteredEmployees.map(e => {
                 const published = publishedSlips.includes(e.id);
                 return (
                   <div key={e.id}

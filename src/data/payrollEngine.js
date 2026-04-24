@@ -268,8 +268,23 @@ export const computeEmployeePayroll = (emp) => {
     dateOfJoining,
     ptHalfYearlyMode = 'lump_sum',
     exit_date,
-    exit_reason
+    exit_reason,
+    salary_status = 'active'
   } = emp;
+
+  if (salary_status === 'withheld' || salary_status === 'absconding') {
+    return {
+      components: [], standardBasic: 0, standardHRA: 0, standardGross: 0,
+      annualGross: 0, taxableIncome: 0, annualTax: 0, tds: 0,
+      fixedGross: 0, grossSalary: 0, netPay: 0, totalDeductions: 0,
+      pfEmployee: 0, esiEmployee: 0, pt: 0, lwf: 0,
+      pfEmployer: 0, esiEmployer: 0, 
+      arrearsPay: 0, leaveEncashmentPay: 0, monthlyReimbursements: 0, variablePay: 0, overtimePay: 0,
+      salaryWithheld: true,
+      withheldReason: salary_status === 'absconding' ? 'Employee is absconding' : 'Salary explicitly withheld',
+      engineValidations: [`Salary computation bypassed. Reason: Salary status marked as ${salary_status.toUpperCase()}.`]
+    };
+  }
 
   const components = salaryComponents.map(c => ({ ...c })); // shallow clone to avoid mutation
 
@@ -498,6 +513,10 @@ export const computeEmployeePayroll = (emp) => {
 
   // ── EXIT TAX VALIDATION ────────────────────────────────────────────────────
   const engineValidations = [];
+  if (salary_status === 'fnf_pending') {
+    engineValidations.push("This computation is flagged as Full & Final (FnF) Pending.");
+  }
+
   const totalDeductionsWithoutTDS = pfEmployee + esiEmployee + pt + lwf + employeeDeductions;
   const netPayBeforeTDS = grossSalary - totalDeductionsWithoutTDS + (reimbursementTaxStrategy === 'year_end' ? monthlyReimbursements : 0);
 

@@ -1,5 +1,5 @@
 import { useState, useCallback, useEffect } from 'react';
-import { getEmployees, getPayruns, createPayrun, updatePayrunStatus, getPayrunAdjustments, savePayrunAdjustment, getEmployeeFYTaxHistory, getEmployeeSubmissions, deletePayrun, getCompanySettings } from '../../data/api';
+import { getEmployees, getPayruns, createPayrun, updatePayrunStatus, addPayrunAuditLog, getPayrunAdjustments, savePayrunAdjustment, getEmployeeFYTaxHistory, getEmployeeSubmissions, deletePayrun, getCompanySettings } from '../../data/api';
 import { computeEmployeePayroll } from '../../data/payrollEngine';
 import { getDaysInMonth, getMonthsRemainingInFY, getFinancialYearRange } from '../../utils/dateUtils';
 import PayrollOps_Initiate from './PayrollOps_Initiate';
@@ -159,6 +159,9 @@ export default function PayrollOpsTab() {
             ov.ytdGross = history.grossSalary;
             ov.ytdBasic = history.basic;
             ov.ytdHRA = history.hra;
+            ov.ytdNetPay = history.netPay;
+            ov.ytdTotalDeductions = history.totalDeductions;
+            ov.ytdComponents = history.components;
             taxChanged = true;
           } catch (e) {
             console.error(`Failed to fetch tax history for ${empId}:`, e);
@@ -248,7 +251,11 @@ export default function PayrollOpsTab() {
           ytdGross: taxOv.ytdGross,
           ytdBasic: taxOv.ytdBasic,
           ytdHRA: taxOv.ytdHRA,
+          ytdNetPay: taxOv.ytdNetPay,
+          ytdTotalDeductions: taxOv.ytdTotalDeductions,
+          ytdComponents: taxOv.ytdComponents,
           monthsRemaining: taxOv.monthsRemaining ?? 12,
+          employeeDeductions: adj.manualDeduction ?? 0,
           inputMode: e.input_mode || 'monthly',
           payrollMonth: payrollMonthIndex,
           payrollYear: activePayrun.year || Number((activePayrun.month_year || '').split(' ')[1]) || new Date().getFullYear(),
@@ -263,7 +270,22 @@ export default function PayrollOpsTab() {
           return c;
         });
 
-        return { ...engineEmp, computed: computeEmployeePayroll(engineEmp) };
+        const computed = computeEmployeePayroll(engineEmp);
+        
+        computed.ytd = {
+           grossSalary: (taxOv.ytdGross || 0) + computed.grossSalary,
+           basic: (taxOv.ytdBasic || 0) + computed.basic,
+           hra: (taxOv.ytdHRA || 0) + computed.hra,
+           tds: (taxOv.tdsDeductedSoFar || 0) + computed.tds,
+           netPay: (taxOv.ytdNetPay || 0) + computed.netPay,
+           totalDeductions: (taxOv.ytdTotalDeductions || 0) + computed.totalDeductions,
+           components: { ...(taxOv.ytdComponents || {}) }
+        };
+        computed.components.forEach(cp => {
+           computed.ytd.components[cp.id] = (computed.ytd.components[cp.id] || 0) + (cp._resolved || 0);
+        });
+
+        return { ...engineEmp, computed };
       });
   }, [activePayrun, employees, companySettings]);
 
@@ -388,6 +410,25 @@ export default function PayrollOpsTab() {
     }
   }, [activePayrun]);
 
+  const unlockPayrun = useCallback(async (payrunId) => {
+    const reason = prompt("Enter a reason to unlock this payrun for correction (this will be logged for auditing):");
+    if (!reason || reason.trim() === "") return;
+    try {
+      await updatePayrunStatus(payrunId, 'reviewed');
+      await addPayrunAuditLog(payrunId, {
+        action: 'unlock',
+        reason: reason,
+        user: 'Finance Admin'
+      });
+      const pUpdate = { ...payruns.find(p => p.id === payrunId), status: 'reviewed' };
+      setPayruns(prev => prev.map(p => p.id === payrunId ? pUpdate : p));
+      openPayrun(pUpdate);
+      alert('Payrun unlocked successfully for corrections!');
+    } catch (e) {
+      alert("Failed to unlock payrun: " + e.message);
+    }
+  }, [payruns, openPayrun]);
+
   if (loading) {
     return <div style={{ padding: 100, textAlign: 'center', color: '#6366f1', fontWeight: 700 }}>⚡ Loading Payroll Systems...</div>;
   }
@@ -430,12 +471,14 @@ export default function PayrollOpsTab() {
       </div>
 
       <div className="ops-content">
-        {step === 0 && <PayrollOps_Initiate {...sharedProps} onOpenPayrun={openPayrun} onInitiate={initiatePayrun} onDeletePayrun={handleDeletePayrun} />}
-        {step === 1 && <PayrollOps_Review {...sharedProps} />}
-        {step === 2 && <PayrollOps_Tax {...sharedProps} />}
-        {step === 3 && <PayrollOps_TaxReport {...sharedProps} />}
-        {step === 4 && <PayrollOps_Confirm {...sharedProps} onConfirm={confirmPayrun} />}
-        {step === 5 && <PayrollOps_SlipViewer {...sharedProps} onComplete={completePayrun} />}
+        <div>
+          {step === 0 && <PayrollOps_Initiate store={store} onInitiate={initiatePayrun} onOpenPayrun={openPayrun} onDeletePayrun={handleDeletePayrun} onUnlockPayrun={unlockPayrun} />}
+          {step === 1 && activePayrun && payrunEmployees.length > 0 && <PayrollOps_Review {...sharedProps} />}
+          {step === 2 && activePayrun && payrunEmployees.length > 0 && <PayrollOps_Tax {...sharedProps} />}
+          {step === 3 && activePayrun && payrunEmployees.length > 0 && <PayrollOps_TaxReport {...sharedProps} />}
+          {step === 4 && activePayrun && payrunEmployees.length > 0 && <PayrollOps_Confirm {...sharedProps} onConfirm={confirmPayrun} />}
+          {step === 5 && activePayrun && payrunEmployees.length > 0 && <PayrollOps_SlipViewer {...sharedProps} onComplete={completePayrun} />}
+        </div>
       </div>
     </div>
   );

@@ -144,6 +144,43 @@ function downloadExcelFromRows(rows, sheetName, filename) {
   XLSX.writeFile(wb, filename);
 }
 
+async function downloadStatewiseZippedExcel(allRowsList, typeLabel, filenamePrefix) {
+  try {
+    const { default: JSZip } = await import('https://cdn.jsdelivr.net/npm/jszip@3.10.1/+esm');
+    const zip = new JSZip();
+
+    const stateGroups = {};
+    for (const row of allRowsList) {
+      const st = row.State || 'KA';
+      if (!stateGroups[st]) stateGroups[st] = [];
+      stateGroups[st].push(row);
+    }
+
+    if (Object.keys(stateGroups).length === 0) {
+      alert(`No ${typeLabel} deductions found in this payrun.`);
+      return;
+    }
+
+    for (const [st, rows] of Object.entries(stateGroups)) {
+      const ws = XLSX.utils.json_to_sheet(rows);
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, `${typeLabel}_${st}`);
+      
+      const fileData = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
+      zip.file(`${filenamePrefix}_${st}.xlsx`, fileData);
+    }
+
+    const blob = await zip.generateAsync({ type: 'blob' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a'); a.href = url; a.download = `${filenamePrefix}_AllStates.zip`;
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  } catch (e) {
+    alert("Error generating state-wise ZIP: " + e.message);
+    console.error(e);
+  }
+}
+
 // ── Export button component ───────────────────────────────────────────────────
 function ExportBtn({ icon, label, sublabel, color, onClick }) {
   return (
@@ -270,10 +307,10 @@ export default function PayrollOps_Confirm({ payrunEmployees, activePayrun, onCo
             onClick={() => downloadText(generateESICReturn(payrunEmployees, activePayrun), `ESIC_Return_${monthLabel}_${today}.txt`)} />
           <ExportBtn icon="📑" label="TDS / 24Q" sublabel="Pre-fill Data" color="#b45309"
             onClick={() => downloadExcelFromRows(generateTDS24QStub(payrunEmployees), 'TDS 24Q', `TDS_24Q_${monthLabel}_${today}.xlsx`)} />
-          <ExportBtn icon="🏛️" label="Prof. Tax" sublabel="State-wise" color="#16a34a"
-            onClick={() => downloadExcelFromRows(generatePTReturn(payrunEmployees), 'PT Return', `PT_Return_${monthLabel}_${today}.xlsx`)} />
-          <ExportBtn icon="⚖️" label="LWF" sublabel="Statement" color="#0369a1"
-            onClick={() => downloadExcelFromRows(generateLWFStatement(payrunEmployees), 'LWF', `LWF_Statement_${monthLabel}_${today}.xlsx`)} />
+          <ExportBtn icon="🏛️" label="Prof. Tax" sublabel="State-wise ZIP" color="#16a34a"
+            onClick={() => downloadStatewiseZippedExcel(generatePTReturn(payrunEmployees), 'PT_Return', `PT_Return_${monthLabel}_${today}`)} />
+          <ExportBtn icon="⚖️" label="LWF" sublabel="State-wise ZIP" color="#0369a1"
+            onClick={() => downloadStatewiseZippedExcel(generateLWFStatement(payrunEmployees), 'LWF_Stmt', `LWF_Statement_${monthLabel}_${today}`)} />
           <ExportBtn icon="📊" label="Payroll Register" sublabel="Full — All Components" color="#334155"
             onClick={() => downloadExcelFromRows(generatePayrollRegister(payrunEmployees), 'Register', `Payroll_Register_${monthLabel}_${today}.xlsx`)} />
         </div>

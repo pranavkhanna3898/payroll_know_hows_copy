@@ -83,6 +83,7 @@ function EmpDetailPane({ emp, activePayrun, updateAdjustment, companySettings, o
                 ['OT Hours', 'overtimeHours', emp.overtimeHours],
                 ['OT Rate (₹)', 'otRate', emp.otRate],
                 ['Leave Encashment Days', 'leaveEncashmentDays', emp.leaveEncashmentDays],
+                ['Manual Deduction (₹)', 'manualDeduction', emp.manualDeduction || 0],
               ].map(([label, field, fallback]) => (
                 <div key={field}>
                   <div style={{ fontSize: 10, fontWeight: 700, color: '#64748b', textTransform: 'uppercase', marginBottom: 4 }}>{label}</div>
@@ -212,6 +213,18 @@ function EmpDetailPane({ emp, activePayrun, updateAdjustment, companySettings, o
                     <div key={i} style={{ background: 'rgba(139,92,246,0.1)', padding: '8px 12px', borderRadius: 6, border: '1px solid rgba(139,92,246,0.2)' }}>
                       <div style={{ fontSize: 10, color: '#d8b4fe', marginBottom: 2 }}>{bk.name}</div>
                       <div style={{ fontSize: 14, fontWeight: 700, color: '#fff', fontFamily: 'monospace' }}>₹{fmt(bk.amount)}</div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            {companySettings?.incentiveDisplayMode === 'breakup' && variableComps.length > 0 && c.variablePay > 0 && (
+              <div style={{ marginTop: 16, paddingTop: 16, borderTop: '1px dashed rgba(255,255,255,0.2)' }}>
+                <div style={{ fontSize: 11, color: '#fbbf24', textTransform: 'uppercase', marginBottom: 8, fontWeight: 700 }}>Variable Component Breakup</div>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))', gap: 12 }}>
+                  {variableComps.filter(cp => (adj.variablePayouts?.[cp.id] ?? cp.currentPayout ?? 0) > 0).map((bk, i) => (
+                    <div key={i} style={{ background: 'rgba(251,191,36,0.1)', padding: '8px 12px', borderRadius: 6, border: '1px solid rgba(251,191,36,0.2)' }}>
+                      <div style={{ fontSize: 10, color: '#fde68a', marginBottom: 2 }}>{bk.name}</div>
+                      <div style={{ fontSize: 14, fontWeight: 700, color: '#fff', fontFamily: 'monospace' }}>₹{fmt(adj.variablePayouts?.[bk.id] ?? bk.currentPayout ?? 0)}</div>
                     </div>
                   ))}
                 </div>

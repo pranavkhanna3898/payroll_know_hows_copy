@@ -156,11 +156,20 @@ const convertStructure = (structure, toAnnual) => {
             <Field label="Full Name"><TextInput value={editingEmp.name} onChange={v => setEditingEmp({...editingEmp, name: v})} /></Field>
             <Field label="Department"><TextInput value={editingEmp.department} onChange={v => setEditingEmp({...editingEmp, department: v})} /></Field>
             <Field label="Designation"><TextInput value={editingEmp.designation} onChange={v => setEditingEmp({...editingEmp, designation: v})} /></Field>
-            <Field label="Status">
+            <Field label="Profile Status">
               <select value={String(editingEmp.is_active)} onChange={e => setEditingEmp({...editingEmp, is_active: e.target.value === 'true'})}
                 style={{ padding: '8px 12px', border: '1px solid #cbd5e1', borderRadius: 6, fontSize: 13, width: '100%' }}>
-                <option value="true">Active</option>
-                <option value="false">Inactive</option>
+                <option value="true">Active (Logins enabled)</option>
+                <option value="false">Inactive (Revoked)</option>
+              </select>
+            </Field>
+            <Field label="Salary Processing Status">
+              <select value={editingEmp.salary_status || 'active'} onChange={e => setEditingEmp({...editingEmp, salary_status: e.target.value})}
+                style={{ padding: '8px 12px', border: '1px solid #b91c1c', borderRadius: 6, fontSize: 13, width: '100%', color: '#b91c1c', fontWeight: 600 }}>
+                <option value="active">Active Calculation</option>
+                <option value="withheld">Withheld (Stop Payment)</option>
+                <option value="absconding">Absconding (No Payment)</option>
+                <option value="fnf_pending">Full & Final Pending</option>
               </select>
             </Field>
           </Grid>
@@ -559,12 +568,24 @@ function PayrollCycleSettings({ s, update }) {
         </Field>
       </Grid>
       <div style={{ marginTop: 16, paddingTop: 16, borderTop: '1px solid #e2e8f0' }}>
-        <div style={{ fontSize: 12, fontWeight: 700, color: '#334155', marginBottom: 10 }}>Arrear Display Preferences</div>
+        <div style={{ fontSize: 12, fontWeight: 700, color: '#334155', marginBottom: 10 }}>Salary Slip & Display Preferences</div>
         <Grid cols={2}>
           <Field label="Arrear Display Mode">
             <select value={s.arrearDisplayMode || 'consolidated'} onChange={e => update('arrearDisplayMode', e.target.value)} style={{ padding: '8px 12px', border: '1px solid #cbd5e1', borderRadius: 6, fontSize: 13, outline: 'none' }}>
               <option value="consolidated">Consolidated arrears only</option>
               <option value="breakup">Component-wise arrear breakup</option>
+            </select>
+          </Field>
+          <Field label="Incentive/Variable Display Mode">
+            <select value={s.incentiveDisplayMode || 'consolidated'} onChange={e => update('incentiveDisplayMode', e.target.value)} style={{ padding: '8px 12px', border: '1px solid #cbd5e1', borderRadius: 6, fontSize: 13, outline: 'none' }}>
+              <option value="consolidated">Consolidated into one line</option>
+              <option value="breakup">Separate into detailed target breakups</option>
+            </select>
+          </Field>
+          <Field label="Show YTD (Year-To-Date) on Slips">
+            <select value={s.showYTDOnPayslip !== false ? 'true' : 'false'} onChange={e => update('showYTDOnPayslip', e.target.value === 'true')} style={{ padding: '8px 12px', border: '1px solid #cbd5e1', borderRadius: 6, fontSize: 13, outline: 'none' }}>
+              <option value="true">Yes, display YTD values</option>
+              <option value="false">No, hide YTD</option>
             </select>
           </Field>
           <Field label="Show Breakup In" hint="Applicable only in breakup mode">

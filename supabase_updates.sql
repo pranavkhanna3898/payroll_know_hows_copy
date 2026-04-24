@@ -26,3 +26,11 @@ ALTER TABLE employees
 ALTER TABLE employees
   ADD COLUMN IF NOT EXISTS exit_date DATE,
   ADD COLUMN IF NOT EXISTS exit_reason TEXT;
+
+-- Phase 2 schema updates
+ALTER TABLE payruns
+  ADD COLUMN IF NOT EXISTS audit_logs JSONB DEFAULT '[]'::jsonb;
+
+ALTER TABLE employees
+  ADD COLUMN IF NOT EXISTS salary_status TEXT DEFAULT 'active';
+

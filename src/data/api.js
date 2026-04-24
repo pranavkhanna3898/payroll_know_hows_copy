@@ -116,6 +116,18 @@ export async function updatePayrunStatus(id, status) {
   if (error) throw error;
 }
 
+export async function addPayrunAuditLog(payrunId, logEntry) {
+  if (!supabase) throw new Error('Supabase client not initialized');
+  const { data: payrun, error: fetchErr } = await supabase.from('payruns').select('audit_logs').eq('id', payrunId).single();
+  if (fetchErr) throw fetchErr;
+
+  const logs = Array.isArray(payrun.audit_logs) ? payrun.audit_logs : [];
+  logs.push({ ...logEntry, timestamp: new Date().toISOString() });
+
+  const { error } = await supabase.from('payruns').update({ audit_logs: logs, updated_at: new Date() }).eq('id', payrunId);
+  if (error) throw error;
+}
+
 export async function deletePayrun(id) {
   if (!supabase) throw new Error('Supabase client not initialized');
   // First manually delete adjustments to avoid foreign key orphaned records if ON DELETE CASCADE isn't enabled
@@ -151,22 +163,17 @@ export async function savePayrunAdjustment(payrunId, employeeId, adjustments, co
 
 // --- Historical Data ---
 
-/**
- * Fetches all previous TDS deductions for an employee in a given FY
- */
 export async function getEmployeeFYTaxHistory(employeeId, monthLabel) {
   if (!supabase) throw new Error('Supabase client not initialized');
-  
   // 1. Get all published/completed/confirmed payruns
   const { data: payruns, error: pError } = await supabase
     .from('payruns')
     .select('id, month_year')
     .in('status', ['published', 'completed', 'confirmed']);
-  
   if (pError) throw pError;
-  if (!payruns || payruns.length === 0) return { tds: 0, grossSalary: 0, basic: 0, hra: 0 };
+  const history = { tds: 0, grossSalary: 0, basic: 0, hra: 0, netPay: 0, totalDeductions: 0, components: {} };
+  if (!payruns || payruns.length === 0) return history;
 
-  // 2. Identify current FY start (April)
   const [monthName, yearStr] = monthLabel.split(' ');
   const monthIdx = ['January','February','March','April','May','June','July','August','September','October','November','December'].indexOf(monthName);
   const currentDate = new Date(parseInt(yearStr), monthIdx, 1);
@@ -174,9 +181,8 @@ export async function getEmployeeFYTaxHistory(employeeId, monthLabel) {
   const currentMonth = currentDate.getMonth();
   
   let fyStartYear = currentMonth >= 3 ? currentYear : currentYear - 1;
-  const fyStartDate = new Date(fyStartYear, 3, 1); // April 1st
+  const fyStartDate = new Date(fyStartYear, 3, 1);
 
-  // 3. Filter payruns belonging to the current FY but BEFORE the current month
   const fyPayrunIds = payruns.filter(p => {
     const [pMonthName, pYearStr] = p.month_year.split(' ');
     const pMonthIdx = ['January','February','March','April','May','June','July','August','September','October','November','December'].indexOf(pMonthName);
@@ -184,9 +190,8 @@ export async function getEmployeeFYTaxHistory(employeeId, monthLabel) {
     return pDate >= fyStartDate && pDate < currentDate;
   }).map(p => p.id);
 
-  if (fyPayrunIds.length === 0) return { tds: 0, grossSalary: 0, basic: 0, hra: 0 };
+  if (fyPayrunIds.length === 0) return history;
 
-  // 4. Fetch adjustments for these payruns
   const { data: adjs, error: aError } = await supabase
     .from('payrun_adjustments')
     .select('computed_data')
@@ -194,20 +199,21 @@ export async function getEmployeeFYTaxHistory(employeeId, monthLabel) {
     .in('payrun_id', fyPayrunIds);
 
   if (aError) throw aError;
-  
-  // 5. Aggregate TDS and YTD data from computed_data
-  const history = {
-    tds: 0,
-    grossSalary: 0,
-    basic: 0,
-    hra: 0
-  };
 
   (adjs || []).forEach(item => {
-    history.tds += (item.computed_data?.tds || 0);
-    history.grossSalary += (item.computed_data?.grossSalary || 0);
-    history.basic += (item.computed_data?.basic || 0);
-    history.hra += (item.computed_data?.hra || 0);
+    const c = item.computed_data || {};
+    history.tds += (c.tds || 0);
+    history.grossSalary += (c.grossSalary || 0);
+    history.basic += (c.basic || 0);
+    history.hra += (c.hra || 0);
+    history.netPay += (c.netPay || 0);
+    history.totalDeductions += (c.totalDeductions || 0);
+    
+    if (c.components) {
+      c.components.forEach(comp => {
+        history.components[comp.id] = (history.components[comp.id] || 0) + (comp._resolved || 0);
+      });
+    }
   });
 
   return history;
