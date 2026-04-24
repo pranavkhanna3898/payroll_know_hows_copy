@@ -1,7 +1,8 @@
 # India Payroll Management Module — HRMS Design Reference
 ### Comprehensive Guide: Modules, Components, Statutory Rules & State-wise Compliance
 
----
+**Document Version:** 2.0 | **Last Updated:** April 24, 2026 | **FY Reference:** 2025–26  
+**Application:** Payroll Traceability Matrix | **Backend:** Supabase (PostgreSQL + RLS) | **Frontend:** React (Vite)
 
 ## TABLE OF CONTENTS
 
@@ -21,6 +22,9 @@
 9. [TDS & Income Tax — New vs Old Regime](#9-tds--income-tax--new-vs-old-regime)
 10. [Commonalities & Differences Across States](#10-commonalities--differences-across-states)
 11. [Traceability Matrix — Component × State](#11-traceability-matrix--component--state)
+12. [Payroll Operations Module — As Implemented](#12-payroll-operations-module--as-implemented)
+13. [Salary Status Management & Exit Lifecycle](#13-salary-status-management--exit-lifecycle)
+14. [System Prerequisites & Assumptions](#14-system-prerequisites--assumptions)
 
 ---
 
@@ -58,23 +62,29 @@
 **Sub-modules:**
 - **Attendance Import**: Integration with biometric/HRMS attendance systems; daily/weekly upload, exception handling
 - **Leave Ledger Sync**: Approved leave, LOP (Loss of Pay), encashable leave balances
-- **LOP Calculation Engine**: Daily rate = Monthly Gross / Working days; deduct for each LOP day
-- **Overtime (OT) Engine**: OT rate by employee type (double rate for factories per Factories Act); shift-differential rules
+- **LOP Calculation Engine**: Calendar-day proration: `attendanceFactor = (daysInMonth - lopDays) / daysInMonth`. Applied to Basic, HRA, and Special Allowance.
+- **Overtime (OT) Engine**: OT rate by employee type (double rate for factories per Factories Act); shift-differential rules. Computed as `overtimePay = overtimeHours × otRate`.
 - **Working Days Calendar**: Holiday master (national, state, company-specific), shift roster integration
-- **Arrear Computation**: Salary hike effective from past date → calculate diff for retroactive months
+- **Arrear Computation**: Multi-entry arrear engine with per-entry: Historical Month, Historical Gross, Month Days, and Arrear Days. Automatic clamping: `acceptedDays = min(requestedDays, min(historicalMonthDays, currentPaidDays))`. Component-wise proportional breakup of arrears across Basic, HRA, and Special Allowance. Display mode configurable as `consolidated` or `breakup` with per-step visibility (`review`, `tax`, `slip`).
+- **Leave Encashment**: Computed as `(standardGross / 26) × encashmentDays`. Retirement leave encashment exempt up to ₹25 lakh under Section 10(10AA).
 
 ---
 
 ### 1.4 Payroll Processing Engine
-**Purpose:** The core monthly computation engine.
+**Purpose:** The core monthly computation engine. All computations are performed client-side by a deterministic JavaScript engine (`payrollEngine.js`). No server-side computation layer.
 
 **Sub-modules:**
-- **Payroll Lock & Control**: Draft → Verification → Lock → Disbursal lifecycle; role-based approval gates
+- **Payroll Lock & Control**: 6-stage lifecycle: `draft` → `initiated` → `reviewed` → `tax_checked` → `confirmed` → `completed`. Post-finalization unlock with mandatory audit-reason workflow (append-only `audit_logs` JSONB on payruns table).
 - **Pay-run Configuration**: Single/multi-entity payroll, payroll frequency (monthly, bi-monthly, weekly for piece-rate workers)
-- **Earning Computation**: Gross calculation considering LOP, prorata for new joiners/exits
-- **Deduction Computation**: All statutory and non-statutory deductions
-- **Net Pay Computation**: Gross Earnings - Total Deductions = Net Pay; rounding rules
-- **Negative Pay Handling**: Recovery logic when deductions exceed earnings (advance recovery caps, minimum net pay rules)
+- **3-Pass Component Resolution**:
+  - **Pass 1 — Numeric Resolution**: Convert each component amount to a number. If `inputMode = 'annual'`, divide by 12.
+  - **Pass 2 — Formula Evaluation**: Resolve formula-based components (e.g., `basic * 0.40` for HRA) using the pre-calculated scopeBasic.
+  - **Pass 3 — Statutory Hydration**: For EPF, ESIC, PT, and LWF components with blank amounts, auto-calculate using appropriate statutory rules based on state, gross, and EPF method.
+- **Earning Computation**: Gross calculation considering LOP proration, overtime, arrears (multi-entry with clamping), variable pay (per-component payouts), and leave encashment.
+- **Deduction Computation**: All statutory deductions (EPF, ESI, PT, LWF), custom employee deductions from salary structure, and manual ad-hoc deductions entered at Step 2.
+- **Net Pay Computation**: `netPay = grossSalary - (pfEmployee + esiEmployee + pt + lwf + employeeDeductions + tds) + (reimbursements if year-end strategy)`. All monetary values rounded to nearest integer.
+- **Negative Pay Handling**: Exit TDS auto-cap: if `tds > netPayBeforeTDS`, TDS is capped to `max(0, netPayBeforeTDS)` with validation warning.
+- **Salary Status Filtering**: Engine performs a "Pass 0" check: employees with `salary_status = 'withheld'` or `'absconding'` return a zeroed-out payroll result with `salaryWithheld = true`.
 - **Supplementary Payroll**: Mid-month/off-cycle runs for bonuses, final settlements, arrears
 - **Multi-currency Support**: For expats/deputed employees
 
@@ -125,15 +135,19 @@
 **Purpose:** Compute monthly TDS, manage declarations, and file returns.
 
 **Sub-modules:**
-- **Tax Regime Selection**: Employee-wise Old/New regime choice (default: New regime FY 2024-25 onwards)
-- **Investment Declaration (Form 12BB)**: Capture HRA, LTA, Section 80C-80U proofs; provisional and final declarations
-- **Tax Projection Engine**: Monthly recalculation of annual taxable income; dynamic TDS spreading
+- **Tax Regime Selection**: Employee-wise Old/New regime choice (default: New regime FY 2025-26 onwards). Regime can be overridden per-payrun per-employee at Step 2 without modifying the master record.
+- **Investment Declaration (Form 12BB)**: Capture HRA, LTA, Section 80C-80U proofs; provisional and final declarations. Employee portal integration for self-service submission with proof file uploads. Finance Verification Dashboard for approval/rejection workflow. Verified declarations auto-populate tax override fields at Step 2.
+- **Tax Projection Engine**: Monthly recalculation of annual taxable income; dynamic TDS spreading. Annual Gross projected as `ytdGross + currentGross + (standardGross × futureMonths)`. Exit date caps future months using `ceil((exitDate - payrollStart) / 30)`.
+- **YTD Aggregation**: Auto-fetches historical TDS and gross from prior confirmed/completed payruns within the same FY (April–March). Aggregated fields: ytdGross, ytdBasic, ytdHRA, ytdNetPay, ytdTotalDeductions, tdsDeductedSoFar.
+- **HRA Exemption (Old Regime)**: Three-way minimum: `min(Actual HRA, Rent - 10% Basic, 50%/40% Basic)`. Metro cities: Mumbai, Delhi, Kolkata, Chennai (50% of Basic). Non-metro: 40%.
+- **Chapter VI-A Capping**: 80C capped at ₹1,50,000; 80D Self at ₹25,000; 80D Parents at ₹25,000 (₹50,000 if senior citizen); NPS 80CCD(1B) at ₹50,000; Home Loan Interest at ₹2,00,000.
+- **Monthly TDS Formula**: `tds = max(0, annualTax - tdsDeductedSoFar) / effectiveMonthsRemaining`.
 - **Proof Verification Module**: Upload investment proofs, HR verification workflow, mismatch handling
 - **Perquisite Valuation**: Accommodation (as per rules), car, ESOP, soft furnishing, meals etc.
 - **Form 16 Generation**: Part A (TDS certificate) and Part B (tax computation); digital signing
 - **eTDS Return Filing**: Form 24Q preparation, quarterly filing to TRACES/TIN-NSDL
 - **Salary Revision TDS Impact**: Recalculate TDS on mid-year salary changes
-- **Exit Employee TDS**: Final tax settlement, issue of Form 16 within 60 days
+- **Exit Employee TDS**: Final tax settlement with TDS auto-cap to prevent negative net pay, issue of Form 16 within 60 days
 
 ---
 
@@ -141,8 +155,10 @@
 **Purpose:** Manage claim-based disbursements (separate from regular salary).
 
 **Sub-modules:**
-- **Claim Policy Configuration**: Component-wise limits, eligible employee groups, document requirements
-- **Employee Self-Service Portal**: Claim submission, bill upload, real-time balance view
+- **Claim Policy Configuration**: Component-wise limits, eligible employee groups, document requirements. Reimbursement window enabled/disabled via Company Settings toggle.
+- **Employee Self-Service Portal**: Employees submit claims from within the Employee Portal. The portal dynamically loads only reimbursement components present in the employee's specific salary structure. Claim form includes amount input and proof file upload for each applicable component. Submissions stored in `employee_submissions` table with `type = 'reimbursement'`.
+- **Finance Verification Dashboard**: Finance team reviews submitted claims with side-by-side view of declared vs. allowable amounts. Approve/reject workflow populates `verified_data` which feeds into payrun computation. Auto-capping against annual component limits (derived from salary breakup: if `inputMode = 'monthly'`, multiply by 12 for annual limit display; if `inputMode = 'annual'`, use as-is).
+- **Reimbursement Tax Strategy**: Two strategies supported — `monthly` (reimbursements included in monthly gross and taxed) and `year_end` (reimbursements excluded from gross and added to net pay). Default: `year_end`.
 - **Approval Workflow**: Manager → Finance → HR; auto-approve below threshold
 - **Proof Validation**: Bill date vs. claim period matching, duplicate detection
 - **Tax Treatment Engine**: Classify each reimbursed amount as exempt/taxable; add taxable amount to gross for TDS
@@ -168,16 +184,20 @@
 **Purpose:** Process exit payroll comprehensively and accurately.
 
 **Sub-modules:**
-- **Exit Trigger**: Resignation accepted, termination, retirement, superannuation
+- **Exit Trigger**: Resignation accepted, termination, retirement, superannuation. Exit date (`exit_date`) and exit reason (`exit_reason`) stored on the employee record.
+- **Salary Status Management**: Employee `salary_status` field supports: `active` (normal), `withheld` (salary stopped — e.g., pending investigation), `absconding` (AWOL — salary stopped), `fnf_pending` (exit processing in progress — salary computes normally with advisory flag).
 - **FnF Component Computation**:
-  - Salary for days worked in exit month
-  - Earned leave encashment (EL balance × daily rate)
+  - Salary for days worked in exit month (LOP proration via attendanceFactor)
+  - Earned leave encashment: `(standardGross / 26) × encashmentDays`
+  - Retirement leave encashment exemption: up to ₹25 lakh under Section 10(10AA)
   - Gratuity (if 5+ years; or death/disablement)
   - Bonus (proportional to months worked in bonus year)
   - LTA (if eligible and not claimed)
   - Notice period recovery or pay-in-lieu
   - Reimbursement settlement
   - Loan recovery (balance outstanding)
+- **Exit Tax Projection**: When `exit_date` is set, the engine caps future months for tax projection using `ceil((exitDate - payrollStartDate) / 30)`. This ensures tax is spread only over the remaining employment period, not the full FY.
+- **TDS Auto-Cap Validation**: If computed TDS for an exiting employee exceeds net pay before TDS, the engine auto-caps TDS to `max(0, netPayBeforeTDS)` and pushes a validation warning.
 - **Relieving & Experience Letter Linkage**: Block FnF till No-Objection clearances obtained
 - **PF Transfer / Withdrawal**: Initiation of Form 19 (PF withdrawal) or Form 13 (transfer)
 - **ESI Final Claim**: Coverage period ends; member card continuity info
@@ -191,19 +211,21 @@
 **Purpose:** Statutory and management reporting, payslip generation.
 
 **Sub-modules:**
-- **Payslip Generation**: Employee-wise; PDF with digital signature; multi-language support; password protection
-- **Bulk Distribution**: Email/WhatsApp/ESS portal; batch processing
+- **Payslip Generation**: Employee-wise salary slips rendered with: company header & address, employee details grid (8 fields), attendance summary row (Days in Month / Days Paid / LOP / OT), earnings table, deductions table, and Net Pay take-home banner. Supports configurable YTD column (`showYTDOnPayslip` toggle in Company Settings), arrear breakup display (`arrearDisplayMode = 'breakup'` with `slip` visibility), and variable/incentive breakup (`incentiveDisplayMode = 'breakup'`). Employer contributions (PF, ESIC) shown as informational, not deducted from take-home.
+- **Bulk Distribution**: Department and Work State (Location) dropdown filters for targeted publishing. "Publish Filtered" button publishes all slips matching current filters. **Excel Upload Targeting**: Upload `.xlsx` file with `EMP_CODE` column to publish matching employee slips. "Download All" exports multi-sheet Excel workbook (one sheet per employee). Browser print dialog for individual slip printing/PDF.
 - **MIS Reports**: Head-count cost, department-wise salary, variance (month-on-month), attrition cost
 - **Statutory Reports**: 
-  - PF: ECR, Form 12A, 3A, 6A
-  - ESI: Form 5 (half-yearly return), Form 6 (register)
-  - PT: State-specific returns
-  - LWF: State-specific returns
+  - PF: EPF ECR v2 text file (`UAN #~# Gross #~# EE(12%) #~# EPS(8.33%) #~# EPF-ER(3.67%)`)
+  - ESI: ESIC Return text file (`IP Number | Days Worked | Gross | EE 0.75% | ER 3.25%`)
+  - PT: **State-wise ZIP archive** — employees grouped by `work_state`, each state exported as a separate XLSX within the ZIP
+  - LWF: **State-wise ZIP archive** — same grouping as PT
+  - TDS: TDS 24Q pre-fill Excel (PAN, Name, Gross, Annual Tax, Monthly TDS, Regime)
+  - Bank Transfer: CSV in bank-specific formats (HDFC, ICICI, SBI, Axis, Generic)
+  - Payroll Register: 22-column comprehensive XLSX with all earnings, deductions, and employer contributions
   - Bonus: Form A (register), Form B (set-on/set-off), Form C (payment register)
   - Gratuity: Form A (notice of opening), Form F (nomination)
-  - TDS: Form 24Q, Form 16, Form 12BA
   - Minimum Wages: Form IV (wage register), Form V (overtime register)
-- **Audit Trail**: Every change logged with before/after values, user, timestamp
+- **Audit Trail**: Payrun-level append-only audit logs (`audit_logs` JSONB array on `payruns` table). Each entry records: action type, reason text, user identity, ISO timestamp. Used for unlock/correction tracking. Cannot be deleted through the UI.
 - **Analytics Dashboard**: Cost per hire, CTC-to-net ratio, statutory liability trends, upcoming compliance deadlines
 
 ---
@@ -788,8 +810,8 @@ Step 3: Compute Gross Taxable Salary
   = Annual Gross - All Exemptions
 
 Step 4: Less Standard Deduction
-  Old Regime: ₹50,000 (FY 2023–24)
-  New Regime: ₹75,000 (FY 2024–25 onwards)
+  Old Regime: ₹50,000
+  New Regime: ₹75,000
 
 Step 5: Less Professional Tax Deduction
   (PT paid is deductible u/s 16(iii))
@@ -801,40 +823,41 @@ Step 7: Add Perquisites (if any)
   House rent perquisite, car, ESOP etc.
 
 Step 8: Less Deductions under Chapter VIA (Old Regime only)
-  80C: ₹1,50,000 (PF, PPF, ELSS, Life Insurance, Home Loan Principal etc.)
-  80CCD(1B): ₹50,000 (NPS additional)
-  80D: ₹25,000 self + ₹25,000/50,000 parents (health insurance)
-  80E: Education loan interest (no limit)
-  80EEA: Home loan interest (₹1,50,000; first-time buyer)
-  80G: Donations (50%/100% as specified)
-  80TTA/80TTB: Savings interest ₹10,000 (or ₹50,000 for senior citizens)
-  Others: 80GG, 80GGC, etc.
+   80C: ₹1,50,000 (PF, PPF, ELSS, Life Insurance, Home Loan Principal etc.)
+   80CCD(1B): ₹50,000 (NPS additional)
+   80D: ₹25,000 self + ₹25,000/50,000 parents (health insurance; ₹50,000 if parent is senior citizen)
+   80E: Education loan interest (no limit)
+   80EEA: Home loan interest (₹1,50,000; first-time buyer)
+   80G: Donations (50%/100% as specified)
+   80TTA/80TTB: Savings interest ₹10,000 (or ₹50,000 for senior citizens)
+   Others: 80GG, 80GGC, etc.
 
 Step 9: Compute Tax
 
-  --- OLD REGIME (FY 2024-25) ---
-  Up to ₹2,50,000       → Nil
-  ₹2,50,001 – ₹5,00,000 → 5%
-  ₹5,00,001 – ₹10,00,000 → 20%
-  Above ₹10,00,000      → 30%
-  
-  87A Rebate: ₹12,500 rebate if total income ≤ ₹5,00,000 (Old Regime)
+   --- OLD REGIME (FY 2025-26) ---
+   Up to ₹2,50,000       → Nil
+   ₹2,50,001 – ₹5,00,000 → 5%
+   ₹5,00,001 – ₹10,00,000 → 20%
+   Above ₹10,00,000      → 30%
+   
+   87A Rebate: Full rebate if taxable income ≤ ₹5,00,000 (Old Regime)
 
-  --- NEW REGIME (FY 2024-25) [DEFAULT] ---
-  Up to ₹3,00,000       → Nil
-  ₹3,00,001 – ₹7,00,000 → 5%
-  ₹7,00,001 – ₹10,00,000 → 10%
-  ₹10,00,001 – ₹12,00,000 → 15%
-  ₹12,00,001 – ₹15,00,000 → 20%
-  Above ₹15,00,000      → 30%
-  
-  87A Rebate: ₹25,000 rebate if total income ≤ ₹7,00,000 (New Regime)
+   --- NEW REGIME (FY 2025-26, Union Budget 2025) [DEFAULT] ---
+   Up to ₹4,00,000       → Nil
+   ₹4,00,001 – ₹8,00,000 → 5%
+   ₹8,00,001 – ₹12,00,000 → 10%
+   ₹12,00,001 – ₹16,00,000 → 15%
+   ₹16,00,001 – ₹20,00,000 → 20%
+   ₹20,00,001 – ₹24,00,000 → 25%
+   Above ₹24,00,000      → 30%
+   
+   87A Rebate: Full rebate if taxable income ≤ ₹12,00,000 (New Regime)
 
 Step 10: Add Surcharge (if applicable)
-  Total Income > ₹50 lakh and ≤ ₹1 crore → 10% surcharge on tax
-  Total Income > ₹1 crore and ≤ ₹2 crore → 15% surcharge
-  Total Income > ₹2 crore and ≤ ₹5 crore → 25% (Old) / 25% (New)
-  Total Income > ₹5 crore → 37% (Old) / 25% (New; capped at 25% for New Regime)
+   Total Income > ₹50 lakh and ≤ ₹1 crore → 10% surcharge on tax
+   Total Income > ₹1 crore and ≤ ₹2 crore → 15% surcharge
+   Total Income > ₹2 crore and ≤ ₹5 crore → 25% (Old) / 25% (New)
+   Total Income > ₹5 crore → 37% (Old) / 25% (New; capped at 25% for New Regime)
 
 Step 11: Add Health & Education Cess
   Cess = 4% × (Tax + Surcharge)
@@ -900,11 +923,13 @@ Frequency: Monthly
 (Revised slabs effective April 2023)
 
 | Monthly Gross Salary | PT/Month |
-|---------------------|----------|
+|---------------------|---------|
 | Up to ₹25,000 | Nil |
-| ₹25,001 and above | ₹200 |
+| ₹25,001 and above | ₹200 (₹300 in February) |
 
-Max Annual: ₹2,400
+Max Annual: ₹200 × 11 + ₹300 = ₹2,500
+
+*System Implementation:* `if (gross >= 25000) base = 200; if (month === February) base = 300;`
 
 ---
 
@@ -1208,42 +1233,44 @@ Minimum wages are revised periodically (typically twice a year — April and Oct
 
 ---
 
-## 9. TDS & Income Tax — New vs Old Regime (FY 2024–25)
+## 9. TDS & Income Tax — New vs Old Regime (FY 2025–26)
 
 ### Comparison Table
 
-| Feature | Old Regime | New Regime (Default from FY 2024-25) |
+| Feature | Old Regime | New Regime (Default from FY 2025-26, Union Budget 2025) |
 |---------|-----------|--------------------------------------|
 | Standard Deduction | ₹50,000 | ₹75,000 |
 | HRA Exemption | Yes (u/s 10(13A)) | No |
 | LTA Exemption | Yes (u/s 10(5)) | No |
 | Section 80C | Up to ₹1,50,000 | Not available |
-| Section 80D | Up to ₹25,000/₹50,000 | Not available |
+| Section 80D | Up to ₹25,000 self + ₹25,000/₹50,000 parents | Not available |
 | Section 80CCD(1B) | ₹50,000 NPS | Not available |
 | Section 80E | Education loan interest | Not available |
-| HRA exemption | Yes | No |
 | Home loan interest u/s 24(b) | Up to ₹2,00,000 | Not available (for self-occupied) |
 | Employer NPS 80CCD(2) | Yes | Yes (10% or 14% of Basic+DA) |
-| Tax-free gratuity | Yes | Yes |
+| Tax-free gratuity | Yes (up to ₹20L) | Yes (up to ₹20L) |
 | Tax-free PF | Yes | Yes |
+| Retirement leave encashment | Exempt up to ₹25L | Exempt up to ₹25L |
 | Surcharge cap | 37% (for > ₹5 cr) | 25% (capped) |
-| 87A Rebate limit | ₹5,00,000 income → rebate ₹12,500 | ₹7,00,000 income → rebate ₹25,000 |
+| 87A Rebate limit | Taxable income ≤ ₹5L → full rebate | Taxable income ≤ ₹12L → full rebate |
 | Changing regime | Can switch each year | Can switch each year (except business income) |
 
-### New Regime Tax Slabs (FY 2024–25)
+### New Regime Tax Slabs (FY 2025–26, Union Budget 2025)
 
 | Income Slab | Rate |
 |-------------|------|
-| Up to ₹3,00,000 | Nil |
-| ₹3,00,001 – ₹7,00,000 | 5% |
-| ₹7,00,001 – ₹10,00,000 | 10% |
-| ₹10,00,001 – ₹12,00,000 | 15% |
-| ₹12,00,001 – ₹15,00,000 | 20% |
-| Above ₹15,00,000 | 30% |
+| Up to ₹4,00,000 | Nil |
+| ₹4,00,001 – ₹8,00,000 | 5% |
+| ₹8,00,001 – ₹12,00,000 | 10% |
+| ₹12,00,001 – ₹16,00,000 | 15% |
+| ₹16,00,001 – ₹20,00,000 | 20% |
+| ₹20,00,001 – ₹24,00,000 | 25% |
+| Above ₹24,00,000 | 30% |
 
 *Plus 4% Health & Education Cess on total tax.*
+*87A Rebate: Full rebate if taxable income ≤ ₹12,00,000.*
 
-### Old Regime Tax Slabs (FY 2024–25)
+### Old Regime Tax Slabs (FY 2025–26)
 
 | Income Slab | Rate |
 |-------------|------|
@@ -1253,6 +1280,7 @@ Minimum wages are revised periodically (typically twice a year — April and Oct
 | Above ₹10,00,000 | 30% |
 
 *Plus surcharge and 4% cess.*
+*87A Rebate: Full rebate if taxable income ≤ ₹5,00,000.*
 
 ---
 
@@ -1349,7 +1377,143 @@ MH=Maharashtra, KA=Karnataka, WB=West Bengal, TN=Tamil Nadu, GJ=Gujarat, AP=Andh
 
 ---
 
-*This document covers the statutory framework as of FY 2024–25. Always verify current rates with respective government notifications, EPFO circulars, ESIC notifications, and state government gazettes before payroll processing.*
+## 12. Payroll Operations Module — As Implemented
+
+The Payroll Operations module implements the theoretical framework above as a **6-step sequential pipeline**, each step backed by a dedicated React component and the client-side computation engine.
+
+### 12.1 Six-Step Payrun Pipeline
+
+| Step | Component | Purpose | Key Actions |
+|------|-----------|---------|-------------|
+| **Step 0** | `PayrollOps_Initiate` | **Initiate Payrun** | Select month/year, filter roster by department, auto-exclude withheld/absconding employees, resume existing drafts, view payrun history with unlock/delete actions |
+| **Step 1** | `PayrollOps_Review` | **Review & Adjust Salaries** | Per-employee adjustment pane: LOP days, OT hours/rate, leave encashment days, manual deduction (₹), variable component payouts, multi-entry arrears with automatic day clamping. Live computation refresh. |
+| **Step 2** | `PayrollOps_TaxTDS` | **Tax & TDS Configuration** | Auto-load verified IT declarations, auto-fetch YTD TDS history, per-employee tax regime toggle, Chapter VI-A inputs (80C/80D/NPS/HomeLoan), HRA rent, LTA. Engine computes annual tax → monthly TDS. |
+| **Step 3** | `PayrollOps_TaxReport` | **Tax Computation Report** | Master-detail layout: employee list + per-employee tax sheet with 3 sections (Earnings Breakdown, Deductions & Exemptions, Tax Liability Output with formula trace). Engine validation warnings. |
+| **Step 4** | `PayrollOps_Confirm` | **Confirm & Export** | Summary dashboard (₹ totals), payroll register preview, 7 compliance export buttons (Bank CSV, EPF ECR, ESIC Return, TDS 24Q, PT state ZIP, LWF state ZIP, Full Register Excel). Confirm persists all data. |
+| **Step 5** | `PayrollOps_SlipViewer` | **Salary Slips** | Per-employee slip preview with YTD column (optional), arrear/variable breakup display (configurable), Dept/State filters, bulk publish, Excel upload targeting, Download All as multi-sheet XLSX, Print/PDF. Complete Payroll finalizes. |
+
+### 12.2 Payrun Status Lifecycle
+
+```
+draft → initiated → reviewed → tax_checked → confirmed → completed
+                                                  ↑
+                         🔓 Unlock (with audit reason) reverts to → reviewed
+```
+
+### 12.3 Post-Finalization Corrections
+
+- **Unlock**: Available only on `confirmed` or `completed` payruns. Finance Admin must provide a mandatory reason.
+- **Audit Log**: Append-only `audit_logs` JSONB array on the `payruns` table. Each entry records: `{ action, reason, user, timestamp }`.
+- **Effect**: Payrun status reverts to `reviewed`, allowing corrections from Step 1 onwards.
+
+### 12.4 Configurable Display Preferences (Company Settings)
+
+| Setting | Options | Effect |
+|---------|---------|--------|
+| `arrearDisplayMode` | `consolidated` / `breakup` | Whether arrears appear as one line or per-component |
+| `arrearBreakupVisibility` | `['review', 'tax', 'slip']` | In which steps the breakup is shown |
+| `incentiveDisplayMode` | `consolidated` / `breakup` | Whether variable/incentive pay appears as one line or per-component |
+| `showYTDOnPayslip` | `true` / `false` | Whether YTD column appears in salary slips |
+| `epfCalculationMethod` | `flat_ceiling` / `actual_basic` / `prorated_ceiling` | EPF computation method |
+| `ptHalfYearlyMode` | `lump_sum` / `prorate` | PT deduction frequency for half-yearly states |
+| `lopCalculationMethod` | `calendar` / `working` / `pay_period` | LOP day calculation basis |
+| `prorationType` | `dynamic` / `fixed30` | Whether to use actual calendar days or fixed 30 |
+
+### 12.5 Compliance Export Formats
+
+| Export | Format | Content |
+|--------|--------|---------|  
+| **Bank Transfer** | CSV | Bank-specific column ordering (HDFC, ICICI, SBI, Axis, Generic) |
+| **EPF ECR v2** | TXT | `UAN #~# Gross #~# EE(12%) #~# EPS(8.33%) #~# EPF-ER(3.67%)` |
+| **ESIC Return** | TXT | `IP Number | Days Worked | Gross | EE Contrib (0.75%) | ER Contrib (3.25%)` |
+| **TDS 24Q** | XLSX | PAN, Name, Gross, Annual Tax, Monthly TDS, Regime |
+| **Professional Tax** | ZIP (XLSX per state) | Grouped by `work_state`, each state exported as separate XLSX |
+| **LWF** | ZIP (XLSX per state) | Grouped by `work_state`, each state exported as separate XLSX |
+| **Payroll Register** | XLSX | 22-column comprehensive register with all earnings, deductions, and employer contributions |
+
+### 12.6 Database Schema (Implemented)
+
+| Table | Key Columns | Purpose |
+|-------|------------|--------|
+| `employees` | id, emp_code, name, salary_structure (JSONB), input_mode, tax_regime, work_state, work_city, exit_date, exit_reason, salary_status | Employee master with salary and lifecycle data |
+| `payruns` | id, month_year, status, audit_logs (JSONB) | Monthly payrun records with 6-stage lifecycle |
+| `payrun_adjustments` | payrun_id, employee_id, adjustments (JSONB), computed_data (JSONB) | Per-employee overrides and computed snapshots |
+| `company_settings` | id, settings (JSONB) | Singleton configuration (EPF method, PT registrations, display modes) |
+| `employee_submissions` | employee_id, financial_year, type, status, submitted_data (JSONB), verified_data (JSONB) | IT declarations and reimbursement claims |
 
 ---
-**Document Version:** 1.0 | **Prepared for:** HRMS Payroll Module Design | **Jurisdiction:** India
+
+## 13. Salary Status Management & Exit Lifecycle
+
+### 13.1 Salary Status States
+
+| Status | UI Indicator | Engine Behavior |
+|--------|-------------|----------------|
+| `active` | No badge (default) | Normal payroll processing |
+| `withheld` | Yellow WITHHELD badge | Auto-excluded from Select All. If manually included, engine returns zeroed output with `salaryWithheld = true` and reason: "Salary explicitly withheld". |
+| `absconding` | Red ABSCONDING badge | Same as withheld, with reason: "Employee is absconding". |
+| `fnf_pending` | Blue FNF badge | Normal computation proceeds. Engine adds advisory warning: "This computation is flagged as Full & Final (FnF) Pending." |
+
+### 13.2 Exit Lifecycle Fields
+
+| Field | Type | Purpose |
+|-------|------|--------|
+| `exit_date` | DATE (nullable) | Triggers future-month capping in tax projection |
+| `exit_reason` | TEXT | `Resignation`, `Termination`, `Retirement`. Retirement triggers leave encashment exemption (₹25L). |
+
+### 13.3 Exit Tax Projection Formula
+
+```
+exitMonths = ceil((exitDate - payrollStartDate) / (1000 × 60 × 60 × 24 × 30))
+effectiveMonthsRemaining = min(exitMonths, fyMonthsRemaining)
+```
+
+If `exitMonths < fyMonthsRemaining`, the engine uses the shorter tenure for annual tax projection and TDS spreading.
+
+---
+
+## 14. System Prerequisites & Assumptions
+
+### 14.1 Infrastructure Prerequisites
+
+| Prerequisite | Description |
+|-------------|-------------|
+| **Supabase Project** | A live Supabase project with PostgreSQL database must be provisioned and accessible. The Supabase URL and anon key must be configured in the application's `.env` file. |
+| **Database Tables** | All 5 tables (`employees`, `payruns`, `payrun_adjustments`, `company_settings`, `employee_submissions`) must be created with the schema defined in `supabase_updates.sql`. |
+| **Row-Level Security** | RLS policies must be enabled on all tables. Current implementation uses permissive "allow all" policy; production should implement role-based access. |
+| **Storage Bucket** | An `employee-proofs` storage bucket in Supabase for reimbursement proof file uploads. |
+| **Browser** | Modern browser (Chrome 90+, Edge 90+, Firefox 88+, Safari 14+) with JavaScript enabled. Uses ES2020+ features, dynamic `import()`, and the `Blob` API. |
+| **CDN Access** | Internet connectivity required for loading JSZip via ESM CDN for ZIP generation. |
+
+### 14.2 Data Prerequisites
+
+| Prerequisite | Description |
+|-------------|-------------|
+| **Employee Records** | At least one active employee with a valid `salary_structure` (array of salary component objects) must exist before a payrun can be initiated. |
+| **Salary Structure** | Each employee must have at minimum one `earnings_basic` type component. HRA and Special Allowance are expected but optional. |
+| **Company Settings** | A singleton `company_settings` row must exist. Falls back to hardcoded defaults in `settingsStore.js` if absent. |
+| **Financial Year Convention** | April (month index 3) through March (month index 2). All YTD, month-remaining, and history queries assume this. |
+| **Input Mode Consistency** | The `input_mode` field must accurately reflect whether salary amounts are monthly or annual. |
+
+### 14.3 Computation Assumptions
+
+| Assumption | Description |
+|-----------|-------------|
+| **26 Working Days/Month** | Leave encashment: `standardGross / 26`. |
+| **Calendar-Day Proration** | `(daysInMonth - lopDays) / daysInMonth` using actual calendar days (28/29/30/31). |
+| **Single FY per Payrun** | Cross-FY payruns not supported. |
+| **EPF Ceiling ₹1,800/month** | Under `flat_ceiling`: ₹15,000 × 12% = ₹1,800. |
+| **ESIC Ceiling ₹21,000/month** | Employees above this are exempt. |
+| **Metro Classification** | Mumbai, Delhi, New Delhi, Kolkata, Chennai = Metro (50% Basic for HRA). All others = Non-Metro (40%). |
+| **YTD from Confirmed Payruns Only** | Draft/initiated payruns excluded from history. |
+| **Forward-Looking TDS Spread** | No retroactive recalculation of prior months’ TDS. |
+| **Client-Side Computation** | All payroll math runs in the browser. The `computed_data` snapshot persisted to Supabase is a record of what the client calculated. |
+| **Employer PF = Employee PF** | System mirrors contribution. EPS/EPF-ER split applied on employer side for ECR. |
+| **No Mid-Month Joining Proration** | Admin must manually adjust LOP/Days in Month for partial-month joining. |
+
+---
+
+*This document covers the statutory framework as of FY 2025–26 (Union Budget 2025 slabs). Always verify current rates with respective government notifications, EPFO circulars, ESIC notifications, and state government gazettes before payroll processing.*
+
+---
+**Document Version:** 2.0 | **Last Updated:** April 24, 2026 | **Prepared for:** HRMS Payroll Module Design | **Jurisdiction:** India

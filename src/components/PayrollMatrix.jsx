@@ -12,6 +12,7 @@ import CompanySettingsTab from './settings/CompanySettingsTab';
 import PayrollOpsTab from './payroll/PayrollOpsTab';
 import EmployeePortal from './portal/EmployeePortal';
 import FinanceVerificationTab from './finance/FinanceVerificationTab';
+import FRDTab from './FRDTab';
 
 export default function PayrollMatrix() {
   const [activeTab, setActiveTab] = useState("matrix");
@@ -60,6 +61,8 @@ export default function PayrollMatrix() {
             onBack={() => setSelectedComponent(null)}
           />
         )}
+
+        {activeTab === "frd" && <FRDTab />}
       </div>
     </div>
   );
