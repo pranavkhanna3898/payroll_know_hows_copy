@@ -156,13 +156,13 @@ export const FRD_SECTIONS = [
     subgraph STEP0["STEP 0: INITIATE PAYRUN"]
         direction TB
         A1["Admin selects the Payroll Month and Year from dropdowns"]
-        A2["Employee roster table displayed with Department filter"]
-        A3["System auto-excludes Withheld/Absconding employees"]
-        A4["Roster rows display salary status badges"]
-        A5["Admin selects/deselects employees via checkboxes"]
-        A6{"Draft payrun exists for this month?"}
-        A7["Prompt to resume existing draft"]
-        A8["Create new payrun record and save adjustment stubs"]
+        A2["Employee roster table is displayed with Department filter dropdown"]
+        A3["System auto-excludes employees with salary status Withheld or Absconding from default selection"]
+        A4["Roster rows display salary status badges: WITHHELD in red, ABSCONDING in dark red, FNF in blue, alongside the tax regime badge"]
+        A5["Admin manually selects or deselects employees for inclusion in this payrun using checkboxes"]
+        A6{"Does an unconfirmed draft payrun already exist for this month-year combination?"}
+        A7["System prompts Admin to resume the existing draft payrun instead of creating a duplicate"]
+        A8["System creates a new payrun record in the payruns table and saves initial adjustment stubs for each selected employee"]
         A1 --> A2
         A2 --> A3
         A3 --> A4
@@ -176,76 +176,101 @@ export const FRD_SECTIONS = [
 
     subgraph STEP1["STEP 1: REVIEW AND ADJUST SALARIES"]
         direction TB
-        B1["Master table: Name, Code, Dept, Gross, Net Pay"]
-        B2["Click row to open Adjustment Detail Pane"]
-        B3["Inputs: Days in Month, LOP, OT Hours/Rate, Leave Encashment, Manual Deduction"]
-        B4["Salary Component Table with prorated amounts"]
-        B5["Variable component payout input fields"]
-        B6["Arrears section: Add entries with Historical Month, Gross, Days"]
-        B7["Arrear days auto-clamped with validation warning"]
-        B8["Live Computation: Fixed Gross, Variable Pay, Total Gross, Net Pay"]
-        B1 --> B2 --> B3 --> B4 --> B5 --> B6 --> B7 --> B8
+        B1["Master table displays all selected employees with Name, Code, Department, computed Gross Salary, and Net Pay"]
+        B2["Admin clicks an employee row to open the slide-over Adjustment Detail Pane"]
+        B3["Adjustment inputs are displayed: Days in Month, LOP Days, Overtime Hours, Overtime Rate per hour, Leave Encashment Days, and Manual Deduction amount in Rupees"]
+        B4["Salary Component Table shows each component with columns: Name, Type Badge, Monthly Amount, Prorated Amount after LOP, Variable Payout input field, and Final Amount"]
+        B5["For each variable-type component, Admin enters the current month payout amount into the editable input field"]
+        B6["Arrears section: Admin clicks Add Month to create arrear entries with Historical Month name, Days in that Month, Historical Gross amount, and Arrear Days to be paid"]
+        B7["Arrear days are auto-clamped to the minimum of the historical month days and the current month paid days, with a validation warning shown if clamping occurs"]
+        B8["Live Computation Result panel refreshes in real-time showing: Fixed Gross, Variable Pay, Total Gross Salary, and Net Pay"]
+        B9["If arrear display is set to breakup mode with review visibility, a component-wise arrear breakup table is shown. Same for variable incentive breakup if configured."]
+        B1 --> B2
+        B2 --> B3
+        B3 --> B4
+        B4 --> B5
+        B5 --> B6
+        B6 --> B7
+        B7 --> B8
+        B8 --> B9
     end
 
     STEP1 --> STEP2
 
     subgraph STEP2["STEP 2: TAX AND TDS CONFIGURATION"]
         direction TB
-        C1["Auto-load verified IT Declarations from employee_submissions"]
-        C2["Auto-fetch YTD TDS from prior confirmed payruns"]
-        C3["Tax Card: YTD Tax, Projected Annual Tax, Monthly TDS"]
-        C4["Configure: Regime, 80C, 80D, NPS, HomeLoan, Rent, LTA"]
-        C5["Engine evaluates annual tax liability"]
-        C6["Monthly TDS = (Annual Tax - YTD TDS) / Months Remaining"]
-        C7["Exit TDS auto-cap validation"]
-        C1 --> C2 --> C3 --> C4 --> C5 --> C6 --> C7
+        C1["System auto-loads Finance-verified IT Declaration submissions from the employee_submissions table for the current Financial Year"]
+        C2["System auto-fetches Year-To-Date TDS history by querying computed_data from all prior confirmed or completed payruns in this Financial Year"]
+        C3["For each employee, an expandable Tax Card displays: YTD Tax already deducted, Projected Annual Tax liability, and computed Monthly TDS amount"]
+        C4["Admin can configure per-employee: Tax Regime selection between New and Old, Section 80C investments, 80D Medical for self and parents with senior citizen checkbox, NPS 80CCD-1B, Home Loan Interest under Section 24b, Donations under 80G and 80E, Savings Interest under 80TTA, Monthly Rent for HRA, and LTA claimed"]
+        C5["Engine evaluates the annual tax liability under the selected regime using projected annual gross, applicable deductions, and HRA exemption"]
+        C6["Monthly TDS is computed as: Annual Tax minus TDS already deducted, divided by the number of months remaining in the Financial Year"]
+        C7["For employees with an exit date set, the system validates whether the computed TDS exceeds the net pay before TDS deduction. If it does, the TDS is auto-capped to prevent a negative net pay, and a warning is displayed."]
+        C1 --> C2
+        C2 --> C3
+        C3 --> C4
+        C4 --> C5
+        C5 --> C6
+        C6 --> C7
     end
 
     STEP2 --> STEP3
 
     subgraph STEP3["STEP 3: TAX COMPUTATION REPORT"]
         direction TB
-        D1["Master-detail: Employee list + Tax computation sheet"]
-        D2["Section 1: Earnings Breakdown - YTD, Current, Projected, Total"]
-        D3["Section 2: Deductions and Exemptions - Std Deduction, HRA, Ch VI-A"]
-        D4["Section 3: Tax Liability - Formula trace, Annual Tax, Monthly TDS"]
-        D5["Engine validation warnings displayed"]
-        D1 --> D2 --> D3 --> D4 --> D5
+        D1["Master-detail layout: scrollable employee list panel on the left, detailed per-employee tax computation sheet on the right"]
+        D2["Section 1 of the report shows Earnings Breakdown: a 4-column table with Actual Earnings YTD, Current Month Actual, Projected Future Earnings, and Total Annual Earning for Basic Salary, HRA, Special Allowances, and Total Gross"]
+        D3["Section 2 shows Deductions and Exemptions: Standard Deduction amount, HRA Exemption calculated under Section 10-13A with formula trace, and all Chapter VI-A declarations with individual amounts"]
+        D4["Section 3 shows Tax Liability Output: the slab-wise formula trace string, computed Annual Tax, and implied Monthly TDS based on remaining months"]
+        D5["Any engine validation warnings are displayed at the top of Section 3 with warning icons, including exit auto-cap notices and Full-and-Final pending flags"]
+        D1 --> D2
+        D2 --> D3
+        D3 --> D4
+        D4 --> D5
     end
 
     STEP3 --> STEP4
 
-    subgraph STEP4["STEP 4: CONFIRM AND EXPORT"]
+    subgraph STEP4["STEP 4: CONFIRM PAYRUN AND EXPORT COMPLIANCE FILES"]
         direction TB
-        E1["Summary Dashboard: Total Gross, Net, EPF, ESIC, PT, LWF, TDS"]
-        E2["Payroll Register Preview table"]
-        E3["7 Export buttons: Bank CSV, EPF ECR, ESIC, TDS 24Q, PT ZIP, LWF ZIP, Register"]
-        E4["Confirm Payrun: persist adjustments and computed data"]
-        E5["Status updated to confirmed"]
-        E1 --> E2 --> E3 --> E4 --> E5
+        E1["Payrun Summary Dashboard displays aggregated totals across all employees: Total Gross, Net Payable, Total EPF including EE and ER, Total ESIC including EE and ER, Total Professional Tax, Total LWF, and Total TDS"]
+        E2["Payroll Register Preview table lists every employee with their individual Gross, EPF Employee share, ESIC Employee share, PT, LWF, TDS, Total Deductions, and Net Pay"]
+        E3["Compliance Exports panel provides 7 download buttons: Bank Transfer CSV in selected bank format, EPF ECR v2 text file, ESIC Return text file, TDS 24Q Excel pre-fill, Professional Tax state-wise ZIP, LWF state-wise ZIP, and Full Payroll Register Excel"]
+        E4["Admin clicks Confirm Payrun button which persists all per-employee adjustment and computed data snapshots to the payrun_adjustments table"]
+        E5["Payrun status is updated from tax_checked to confirmed in the payruns table"]
+        E1 --> E2
+        E2 --> E3
+        E3 --> E4
+        E4 --> E5
     end
 
     STEP4 --> STEP5
 
-    subgraph STEP5["STEP 5: SALARY SLIPS"]
+    subgraph STEP5["STEP 5: SALARY SLIP GENERATION AND PUBLISHING"]
         direction TB
-        F1["Salary Slip Preview with earnings, deductions, Net Pay"]
-        F2["Dept and Work State filters"]
-        F3["Publish/Unpublish individual slips"]
-        F4["Bulk Publish via filters"]
-        F5["Excel Upload targeting by EMP_CODE"]
-        F6["Download All as multi-sheet XLSX"]
-        F7["Print/Save PDF via browser dialog"]
-        F8["Complete Payroll: status to completed"]
-        F1 --> F2 --> F3 --> F4 --> F5 --> F6 --> F7 --> F8
+        F1["Salary Slip Preview renders for the selected employee with: company header and address, employee details grid, attendance summary row, earnings table with all components, deductions table with statutory and custom items, and a Net Pay take-home banner"]
+        F2["Left panel shows the employee list with Department and Work State dropdown filters for narrowing the visible employees"]
+        F3["Each employee row shows Published or Draft status. Admin can click Publish or Unpublish for individual employees."]
+        F4["Bulk Publish via Filtered button publishes slips for all employees matching the active Department and State filters"]
+        F5["Excel-based Targeting: Admin uploads an XLSX file containing an EMP_CODE column. The system matches employee codes and publishes corresponding slips."]
+        F6["Download All Slips button exports every employee salary slip as a multi-sheet Excel workbook with one sheet per employee"]
+        F7["Print or Save PDF button launches the native browser print dialog for the currently viewed salary slip"]
+        F8["Complete Payroll button updates the payrun status to completed and resets the UI back to Step 0"]
+        F1 --> F2
+        F2 --> F3
+        F3 --> F4
+        F4 --> F5
+        F5 --> F6
+        F6 --> F7
+        F7 --> F8
     end
 
     STEP5 --> DONE(["Payrun Completed Successfully"])
 
-    DONE -.-> UNLOCK["Admin clicks Unlock on confirmed/completed payrun"]
-    UNLOCK --> AUDIT["Mandatory reason prompt, audit_logs entry written"]
+    DONE -.-> UNLOCK["Admin navigates to Payrun History and clicks Unlock"]
+    UNLOCK --> AUDIT["System prompts for mandatory reason, writes audit_logs entry"]
     AUDIT --> REVERT["Status reverted to reviewed, re-open at Step 1"]
-    REVERT --> STEP1`,
+    REVERT --> STEP1\`,
     steps: [
       {
         step: 0,
@@ -490,6 +515,14 @@ export const FRD_SECTIONS = [
         ]
       },
       {
+        group: "6.8 Taxable Income",
+        items: [
+          { id: "F-28", name: "Old Regime Deductions", formula: "deductions = min(1.5L, 80C) + min(25k/50k, 80D) + NPS + HomeLoan + ... + hraExempt", notes: "Section 80C/80D/etc" },
+          { id: "F-29", name: "Old Regime Taxable", formula: "taxable = max(0, annualGross - deductions)", notes: "" },
+          { id: "F-30", name: "New Regime Taxable", formula: "taxable = max(0, annualGross - 75000)", notes: "Standard Ded. only" },
+        ]
+      },
+      {
         group: "6.9 Tax Computation",
         items: [
           { id: "F-31", name: "Annual Tax", formula: "annualTax = baseTax × 1.04", notes: "4% H&E Cess" },
@@ -555,66 +588,66 @@ Outputs: Monthly computed payroll including earnings breakdown, statutory deduct
     title: "Computation Engine Flow",
     intro: "executeEmployeePayroll function execution pipeline",
     diagram: `flowchart TD
-    INPUT(["Employee Object: salary components, attendance, tax overrides, exit info, salary status"]) --> STATUS_CHECK
+    INPUT(["Employee Object containing salary components, attendance adjustments, tax overrides, exit info, and salary status"]) --> STATUS_CHECK
 
-    STATUS_CHECK{"Is salary_status withheld or absconding?"}
-    STATUS_CHECK -- "Yes: salary stopped" --> ZERO_OUT["Return zeroed payroll object with salaryWithheld = true"]
-    STATUS_CHECK -- "No: proceed" --> PASS1
+    STATUS_CHECK{"Is salary_status set to withheld or absconding?"}
+    STATUS_CHECK -- "Yes: salary is stopped" --> ZERO_OUT["Return a zeroed-out payroll object with all earnings, deductions, and net pay set to zero. Set salaryWithheld flag to true with the appropriate reason string."]
+    STATUS_CHECK -- "No: proceed with computation" --> PASS1
 
     subgraph RESOLUTION["3-Pass Salary Component Resolution"]
-        PASS1["PASS 1: Resolve Numeric Amounts - if annual, divide by 12"]
-        PASS2["PASS 2: Resolve Formula Strings - evaluate expressions using scopeBasic"]
-        PASS3["PASS 3: Hydrate Statutory Blanks - auto-calculate EPF, ESIC, PT, LWF"]
+        PASS1["PASS 1 - Resolve Numeric Amounts: Convert each component amount to a number. If inputMode is annual, divide the stored annual amount by 12 to get the monthly value."]
+        PASS2["PASS 2 - Resolve Formula Strings: For components with formula-based amounts like basic times 0.40, evaluate the string expression using the pre-calculated scope basic from Pass 1."]
+        PASS3["PASS 3 - Hydrate Statutory Blanks: For EPF, ESIC, PT, and LWF components that have blank or zero amounts, auto-calculate using the appropriate statutory rules based on state, gross, and EPF method."]
         PASS1 --> PASS2 --> PASS3
     end
 
     PASS3 --> ACCUMULATE
 
-    ACCUMULATE["Accumulate: bucket into Basic, HRA, Special, Reimbursements, Employer Contribs, Employee Deductions, Variable"]
+    ACCUMULATE["Final Accumulation: Iterate all resolved components and bucket them into standardBasic, standardHRA, standardSpecial, monthlyReimbursements, employerContribs, employeeDeductions, variableTarget, and variablePay."]
 
     ACCUMULATE --> ATTEND
 
-    ATTEND["Attendance Proration: attendanceFactor = (daysInMonth - lopDays) / daysInMonth"]
+    ATTEND["Attendance Proration: Calculate attendanceFactor as daysInMonth minus lopDays divided by daysInMonth. Multiply standardBasic, standardHRA, and standardSpecial by this factor to get prorated basic, hra, and special amounts."]
 
     ATTEND --> ARREARS
 
-    ARREARS["Arrears: daily rate x accepted days, auto-clamp, component breakup"]
+    ARREARS["Arrears Calculation: For each arrear entry, compute daily rate as historicalGross divided by historicalMonthDays, multiply by accepted arrear days. Auto-clamp requested days to min of historical month days and current paid days. Generate component-wise proportional breakup."]
 
     ARREARS --> GROSS
 
-    GROSS["Gross = prorated Basic + HRA + Special + OT + Arrears + Leave Encashment + Variable + Reimbursements"]
+    GROSS["Gross Salary Computation: Sum of prorated basic, hra, special allowance, overtime pay, arrears pay, leave encashment pay, variable pay, and reimbursements if using monthly reimbursement tax strategy."]
 
     GROSS --> TAX_PROJ
 
-    TAX_PROJ["Tax Projection: annualGross = ytdGross + currentGross + (standardGross x futureMonths)"]
+    TAX_PROJ["Tax Projection: Project annual gross as YTD actual gross plus current month gross plus standard gross times future months remaining. If an exit date is set, cap future months using ceiling of days-difference divided by 30."]
 
     TAX_PROJ --> TAX_CALC
 
-    TAX_CALC["evaluateTaxLiability: regime-specific slabs, Chapter VI-A, HRA exemption"]
+    TAX_CALC["Tax Computation: Call evaluateTaxLiability with the projected annual gross, selected tax regime, all Chapter VI-A deduction caps, HRA exemption inputs, and leave encashment exemption. The function applies the regime-specific slab rates and returns annual tax, formula trace, and HRA breakdown."]
 
     TAX_CALC --> TDS
 
-    TDS["Monthly TDS = (annualTax - tdsDeductedSoFar) / monthsRemaining"]
+    TDS["Monthly TDS Calculation: Compute remaining tax as annual tax minus TDS already deducted year-to-date. Divide by effective months remaining in the Financial Year to get the monthly TDS amount."]
 
     TDS --> STAT
 
-    STAT["Statutory: EPF (3 methods), ESIC (0.75%/3.25%), PT (state slab), LWF (state amount)"]
+    STAT["Statutory Deductions: Calculate EPF employee and employer contributions using the configured method with flat ceiling, actual basic, or prorated ceiling. Calculate ESIC at 0.75 percent employee and 3.25 percent employer if gross is at or below 21000. Calculate Professional Tax using state-specific slab function. Calculate LWF using state-specific amount function."]
 
     STAT --> VALIDATE
 
-    VALIDATE{"Exit date set AND TDS > netPayBeforeTDS?"}
-    VALIDATE -- "Yes" --> CAP["Auto-cap TDS to max(0, netPayBeforeTDS), push warning"]
-    VALIDATE -- "No" --> FNF_CHECK
+    VALIDATE{"Does the employee have an exit date set AND does the computed TDS exceed the net pay before TDS?"}
+    VALIDATE -- "Yes: TDS would cause negative net pay" --> CAP["Auto-cap the TDS to the maximum of zero and net pay before TDS. Push a validation warning message to the engineValidations array explaining the auto-cap."]
+    VALIDATE -- "No: TDS is within safe limits" --> FNF_CHECK
     CAP --> FNF_CHECK
 
-    FNF_CHECK{"salary_status = fnf_pending?"}
-    FNF_CHECK -- "Yes" --> FNF_WARN["Push advisory: FnF Pending"]
+    FNF_CHECK{"Is salary_status set to fnf_pending?"}
+    FNF_CHECK -- "Yes" --> FNF_WARN["Push an advisory validation warning: This computation is flagged as Full and Final Pending"]
     FNF_CHECK -- "No" --> NET
     FNF_WARN --> NET
 
-    NET["Net Pay = Gross - (EPF + ESIC + PT + LWF + Deductions + TDS) + Reimbursements if year-end"]
+    NET["Net Pay Computation: Net Pay equals Gross Salary minus Total Deductions which is EPF plus ESIC plus PT plus LWF plus custom employee deductions plus TDS, then add back reimbursements if using year-end reimbursement tax strategy."]
 
-    NET --> OUTPUT(["Return computed payroll: 55+ fields, breakups, validations"])`
+    NET --> OUTPUT(["Return the complete computed payroll object containing 55 plus fields including all earnings, deductions, tax details, breakups, and validation messages"])`
   },
   {
     id: "tax-slabs",
@@ -624,7 +657,8 @@ Outputs: Monthly computed payroll including earnings breakdown, statutory deduct
       newRegime: {
         fy: "FY 2025-26",
         standardDeduction: "₹75,000",
-        rebate: "Full rebate if taxable income ≤ ₹12,00,000",
+        rebate: "Full rebate u/s 87A if taxable income ≤ ₹12,00,000",
+        notes: "4% Health & Education Cess on tax amount. Standard deduction is flat.",
         rows: [
           ["Up to ₹4,00,000", "Nil"],
           ["₹4,00,001 – ₹8,00,000", "5%"],
@@ -637,7 +671,8 @@ Outputs: Monthly computed payroll including earnings breakdown, statutory deduct
       },
       oldRegime: {
         standardDeduction: "₹50,000",
-        rebate: "Full rebate if taxable income ≤ ₹5,00,000",
+        rebate: "Full rebate u/s 87A if taxable income ≤ ₹5,00,000",
+        notes: "Eligible for Ch VI-A (80C, 80D, 24b) and HRA exemption u/s 10(13A).",
         rows: [
           ["Up to ₹2,50,000", "Nil"],
           ["₹2,50,001 – ₹5,00,000", "5%"],
@@ -819,19 +854,31 @@ These YTD values are injected into the engine and additionally displayed in the 
         ]
       },
       {
+        group: "Data Prerequisites",
+        items: [
+          { prereq: "Employee Records", desc: "Active employee with valid salary_structure (JSON array) must exist." },
+          { prereq: "Salary Structure", desc: "Must contain at least one 'earnings_basic' component." },
+          { prereq: "Company Settings", desc: "Singleton row must exist in company_settings table." },
+          { prereq: "Financial Year", desc: "Aggregations assume April (3) to March (2) convention." },
+          { prereq: "Input Mode", desc: "input_mode (monthly/annual) must match stored amount types." },
+        ]
+      },
+      {
         group: "Computation Assumptions",
         items: [
           { prereq: "26 Working Days/Month", desc: "Leave encashment: standardGross / 26." },
-          { prereq: "Calendar-Day Proration", desc: "(daysInMonth - lopDays) / daysInMonth using actual calendar days." },
+          { prereq: "Calendar Proration", desc: "(daysInMonth - lopDays) / daysInMonth using actual month days." },
           { prereq: "Single FY per Payrun", desc: "Cross-FY payruns not supported." },
-          { prereq: "EPF Ceiling ₹1,800/month", desc: "flat_ceiling: ₹15,000 × 12% = ₹1,800." },
-          { prereq: "ESIC Ceiling ₹21,000/month", desc: "Above = exempt." },
-          { prereq: "Metro Classification", desc: "Mumbai, Delhi, New Delhi, Kolkata, Chennai = Metro (50% Basic). All others = 40%." },
-          { prereq: "YTD from Confirmed Only", desc: "Draft/initiated payruns excluded from history." },
-          { prereq: "Forward-Looking TDS", desc: "No retroactive recalculation of prior months." },
-          { prereq: "Client-Side Computation", desc: "All math runs in browser. computed_data is a client-calculated snapshot." },
-          { prereq: "Employer PF = Employee PF", desc: "Mirrors contribution. EPS/EPF-ER split on employer side for ECR." },
-          { prereq: "No Mid-Month Joining Proration", desc: "Admin must manually adjust LOP/Days for partial-month joining." },
+          { prereq: "EPF Ceiling", desc: "flat_ceiling method capped at ₹1,800/month." },
+          { prereq: "ESIC Ceiling", desc: "₹21,000 gross month threshold for compliance." },
+          { prereq: "Metro Classification", desc: "Mumbai/Delhi/DNC/Kolkata/Chennai = 50% Basic HRA limit." },
+          { prereq: "Tax Regime Lock", desc: "Override at Step 2 is local to payrun; doesn't edit master employee record." },
+          { prereq: "YTD Confirmed Only", desc: "Aggregation excludes draft/initiated payruns." },
+          { prereq: "Forward-Looking TDS", desc: "No retroactive recalculation; spread remains forward-only." },
+          { prereq: "Statutory Slab Accuracy", desc: "PT/LWF based on govt. notifications at build date." },
+          { prereq: "ER PF = EE PF", desc: "Employer mirrors contribution; EPS/ER split for ECR." },
+          { prereq: "Reimbursement Strategy", desc: "Support for 'monthly' (taxed) and 'year_end' (tax-free) flows." },
+          { prereq: "Mid-Month Joiners", desc: "Manual adjustment of LOP/Days in Step 1 required." },
         ]
       },
     ]
@@ -862,6 +909,7 @@ These YTD values are injected into the engine and additionally displayed in the 
       { term: "YTD", definition: "Year-To-Date — cumulative values from April to current month" },
       { term: "Chapter VI-A", definition: "Income Tax Act sections 80C through 80U for tax-saving deductions (Old Regime only)" },
       { term: "Metro", definition: "Mumbai, Delhi, Kolkata, Chennai — 50% Basic for HRA exemption" },
+      { term: "Non-Metro", definition: "All other cities — 40% Basic for HRA exemption" },
       { term: "FY", definition: "Financial Year — April 1 to March 31" },
       { term: "CTC", definition: "Cost to Company — total employer cost including all contributions" },
       { term: "H&E Cess", definition: "Health and Education Cess — 4% surcharge on computed income tax" },
