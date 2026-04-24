@@ -475,13 +475,14 @@ export const FRD_SECTIONS = [
           { id: "F-5", name: "Prorated Basic", formula: "basic = standardBasic × attendanceFactor", notes: "" },
           { id: "F-6", name: "Prorated HRA", formula: "hra = standardHRA × attendanceFactor", notes: "" },
           { id: "F-7", name: "Prorated Special Allowance", formula: "special = standardSpecial × attendanceFactor", notes: "" },
+          { id: "F-8", name: "Attended Days", formula: "attendedDays = daysInMonth - lopDays", notes: "" },
         ]
       },
       {
         group: "6.3 Additional Earnings",
         items: [
           { id: "F-9", name: "Overtime Pay", formula: "overtimePay = overtimeHours × otRate", notes: "Per-hour rate" },
-          { id: "F-10", name: "Leave Encashment", formula: "leaveEncashmentPay = (standardGross / 26) × leaveEncashmentDays", notes: "26 working days/month" },
+          { id: "F-10", name: "Leave Encashment Pay", formula: "leaveEncashmentPay = (standardGross / 26) × leaveEncashmentDays", notes: "26 working days assumed per month" },
         ]
       },
       {
@@ -532,6 +533,7 @@ export const FRD_SECTIONS = [
       {
         group: "6.9 Tax Computation",
         items: [
+          { id: "F-30.1", name: "Base Tax (from slabs)", formula: "baseTax = Σ (taxableIncomeInSlab × slabRate)", notes: "Calculated by applying regime-specific progressive slabs (Section 7.3) to the taxable income." },
           { id: "F-31", name: "Annual Tax (any regime)", formula: "annualTax = baseTax × 1.04", notes: "baseTax from slab computation, 1.04 = 4% H&E Cess" },
           { id: "F-32", name: "Old Regime — 87A Rebate", formula: "if taxableIncome <= 500000 then annualTax = 0", notes: "" },
           { id: "F-33", name: "New Regime — 87A Rebate", formula: "if taxableIncome <= 1200000 then annualTax = 0", notes: "" },
