@@ -57,11 +57,13 @@ function TaxReportModal({ emp, onClose }) {
               <div style={{ background: '#f1f5f9', padding: '10px 16px', fontSize: 12, fontWeight: 700, color: '#334155', textTransform: 'uppercase', letterSpacing: 0.5 }}>3. Deductions (C)</div>
               <div style={{ padding: '12px 16px', fontSize: 13, display: 'flex', flexDirection: 'column', gap: 8 }}>
                  {emp.taxRegime === 'old' ? (
-                   <>
                     <div style={{ display: 'flex', justifyContent: 'space-between' }}><span style={{ color: '#64748b' }}>80C Investments:</span> <strong>₹{fmt(emp.investments80C)}</strong></div>
                     <div style={{ display: 'flex', justifyContent: 'space-between' }}><span style={{ color: '#64748b' }}>80D Medical:</span> <strong>₹{fmt((emp.medical80D_self||0) + (emp.medical80D_parents||0))}</strong></div>
                     <div style={{ display: 'flex', justifyContent: 'space-between' }}><span style={{ color: '#64748b' }}>Sec 24(b) Home Loan:</span> <strong>₹{fmt(emp.homeLoanInterest)}</strong></div>
-                    <div style={{ fontSize: 11, color: '#94a3b8', fontStyle: 'italic', marginTop: 4 }}>Limits: 80C=1.5L, 80D=25k(50k Sr), 24b=2L</div>
+                    {emp.nps80CCD1B > 0 && <div style={{ display: 'flex', justifyContent: 'space-between' }}><span style={{ color: '#64748b' }}>80CCD(1B) NPS:</span> <strong>₹{fmt(emp.nps80CCD1B)}</strong></div>}
+                    {emp.deductions80GE > 0 && <div style={{ display: 'flex', justifyContent: 'space-between' }}><span style={{ color: '#64748b' }}>80G/E Donations/Edu:</span> <strong>₹{fmt(emp.deductions80GE)}</strong></div>}
+                    {emp.savingsInterest80TTA > 0 && <div style={{ display: 'flex', justifyContent: 'space-between' }}><span style={{ color: '#64748b' }}>80TTA/TTB Interest:</span> <strong>₹{fmt(emp.savingsInterest80TTA)}</strong></div>}
+                    <div style={{ fontSize: 11, color: '#94a3b8', fontStyle: 'italic', marginTop: 4 }}>Limits: 80C=1.5L, 80D=25k(50k Sr), 24b=2L, NPS=50k</div>
                    </>
                  ) : (
                    <span style={{ color: '#94a3b8', fontStyle: 'italic' }}>Not applicable in New Regime.</span>
