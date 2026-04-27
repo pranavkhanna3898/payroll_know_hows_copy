@@ -30,32 +30,38 @@ function TaxReportModal({ emp, onClose }) {
         {/* Content */}
         <div style={{ padding: 24, overflowY: 'auto', flex: 1, background: '#fafafa', display: 'flex', flexDirection: 'column', gap: 16 }}>
           
-          <div style={{ background: 'white', border: '1px solid #e2e8f0', borderRadius: 12, overflow: 'hidden' }}>
+          <div style={{ background: 'white', border: '1px solid #e2e8f0', borderRadius: 12, overflow: 'hidden', flexShrink: 0 }}>
             <div style={{ background: '#f1f5f9', padding: '10px 16px', fontSize: 12, fontWeight: 700, color: '#334155', textTransform: 'uppercase', letterSpacing: 0.5 }}>1. Salary & Earnings</div>
             <div style={{ padding: '12px 16px', display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 16, fontSize: 13 }}>
               <div><div style={{ color: '#64748b', marginBottom: 4 }}>YTD Gross</div><div style={{ fontWeight: 600 }}>₹{fmt(c.ytdGross !== undefined ? c.ytdGross : c.standardGross * c.pastMonths)}</div></div>
               <div><div style={{ color: '#64748b', marginBottom: 4 }}>Current Gross</div><div style={{ fontWeight: 600 }}>₹{fmt(c.grossSalary)}</div></div>
-              <div><div style={{ color: '#64748b', marginBottom: 4 }}>Projected Annual Gross</div><div style={{ fontWeight: 700, color: '#0369a1', fontSize: 14 }}>₹{fmt(c.annualGross)}</div></div>
+              <div><div style={{ color: '#64748b', marginBottom: 4 }}>Projected Annual Gross (A)</div><div style={{ fontWeight: 700, color: '#0369a1', fontSize: 14 }}>₹{fmt(c.annualGross)}</div></div>
             </div>
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1fr)', gap: 16 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1fr)', gap: 16, flexShrink: 0 }}>
             <div style={{ background: 'white', border: '1px solid #e2e8f0', borderRadius: 12, overflow: 'hidden' }}>
-              <div style={{ background: '#f1f5f9', padding: '10px 16px', fontSize: 12, fontWeight: 700, color: '#334155', textTransform: 'uppercase', letterSpacing: 0.5 }}>2. Exemptions</div>
+              <div style={{ background: '#f1f5f9', padding: '10px 16px', fontSize: 12, fontWeight: 700, color: '#334155', textTransform: 'uppercase', letterSpacing: 0.5 }}>2. Exemptions (B)</div>
               <div style={{ padding: '12px 16px', fontSize: 13, display: 'flex', flexDirection: 'column', gap: 8 }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between' }}><span style={{ color: '#64748b' }}>Standard Deduction:</span> <strong>₹{fmt(emp.taxRegime === 'new' ? 75000 : 50000)}</strong></div>
-                {emp.taxRegime === 'old' && <div style={{ display: 'flex', justifyContent: 'space-between' }}><span style={{ color: '#64748b' }}>HRA Exemption:</span> <strong>₹{fmt(c.calculatedHraExempt)}</strong></div>}
+                <div style={{ display: 'flex', justifyContent: 'space-between' }}><span style={{ color: '#64748b' }}>Standard Deduction <i>[Sec 16(ia)]</i>:</span> <strong>₹{fmt(emp.taxRegime === 'new' ? 75000 : 50000)}</strong></div>
+                {emp.taxRegime === 'old' && (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between' }}><span style={{ color: '#64748b' }}>HRA Exemption:</span> <strong>₹{fmt(c.calculatedHraExempt)}</strong></div>
+                    {c.calculatedHraExempt > 0 && <div style={{ fontSize: 11, color: '#94a3b8', fontStyle: 'italic', paddingLeft: 8, borderLeft: '2px solid #cbd5e1' }}>Formula: Min(Actual: ₹{fmt(c.hraActual)}, Rent-10%Basic: ₹{fmt(c.hraRentExcess)}, {isMetroCity(emp.computed.rent_city || emp.work_city) ? '50%' : '40%'}Basic: ₹{fmt(c.hraCityLimit)})</div>}
+                  </div>
+                )}
               </div>
             </div>
             
             <div style={{ background: 'white', border: '1px solid #e2e8f0', borderRadius: 12, overflow: 'hidden' }}>
-              <div style={{ background: '#f1f5f9', padding: '10px 16px', fontSize: 12, fontWeight: 700, color: '#334155', textTransform: 'uppercase', letterSpacing: 0.5 }}>3. Deductions (Ch VI-A/24b)</div>
+              <div style={{ background: '#f1f5f9', padding: '10px 16px', fontSize: 12, fontWeight: 700, color: '#334155', textTransform: 'uppercase', letterSpacing: 0.5 }}>3. Deductions (C)</div>
               <div style={{ padding: '12px 16px', fontSize: 13, display: 'flex', flexDirection: 'column', gap: 8 }}>
                  {emp.taxRegime === 'old' ? (
                    <>
                     <div style={{ display: 'flex', justifyContent: 'space-between' }}><span style={{ color: '#64748b' }}>80C Investments:</span> <strong>₹{fmt(emp.investments80C)}</strong></div>
                     <div style={{ display: 'flex', justifyContent: 'space-between' }}><span style={{ color: '#64748b' }}>80D Medical:</span> <strong>₹{fmt((emp.medical80D_self||0) + (emp.medical80D_parents||0))}</strong></div>
                     <div style={{ display: 'flex', justifyContent: 'space-between' }}><span style={{ color: '#64748b' }}>Sec 24(b) Home Loan:</span> <strong>₹{fmt(emp.homeLoanInterest)}</strong></div>
+                    <div style={{ fontSize: 11, color: '#94a3b8', fontStyle: 'italic', marginTop: 4 }}>Limits: 80C=1.5L, 80D=25k(50k Sr), 24b=2L</div>
                    </>
                  ) : (
                    <span style={{ color: '#94a3b8', fontStyle: 'italic' }}>Not applicable in New Regime.</span>
@@ -64,32 +70,38 @@ function TaxReportModal({ emp, onClose }) {
             </div>
           </div>
 
-          <div style={{ background: 'white', border: '1px solid #e2e8f0', borderRadius: 12, overflow: 'hidden' }}>
-            <div style={{ background: '#f8fafc', borderBottom: '1px solid #e2e8f0', padding: '12px 16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <span style={{ fontSize: 12, fontWeight: 700, color: '#475569', textTransform: 'uppercase', letterSpacing: 0.5 }}>4. Tax Calculation Loop</span>
+          <div style={{ background: 'white', border: '1px solid #e2e8f0', borderRadius: 12, overflow: 'hidden', flexShrink: 0 }}>
+            <div style={{ background: '#f8fafc', borderBottom: '1px solid #e2e8f0', padding: '12px 16px', display: 'grid', gridTemplateColumns: '1fr auto', alignItems: 'center' }}>
+              <div>
+                <span style={{ fontSize: 12, fontWeight: 700, color: '#475569', textTransform: 'uppercase', letterSpacing: 0.5 }}>4. Tax Calculation Loop</span>
+                <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 2, fontFamily: 'monospace' }}>Formula: (A - B - C) = Taxable Income</div>
+              </div>
               <span style={{ fontWeight: 800, color: '#7c3aed', fontSize: 15 }}>Taxable Income: ₹{fmt(c.taxableIncome)}</span>
             </div>
             <div style={{ padding: '16px', fontSize: 13, display: 'flex', flexDirection: 'column', gap: 10 }}>
-               <div style={{ display: 'flex', justifyContent: 'space-between' }}><span style={{ color: '#64748b' }}>Base Tax (Slabs):</span> <strong>{c.taxFormulaDetail?.split(' = ')[0] || '₹0'}</strong></div>
-               <div style={{ display: 'flex', justifyContent: 'space-between' }}><span style={{ color: '#64748b' }}>Rebate u/s 87A:</span> <strong style={{ color: '#059669' }}>{c.taxFormulaDetail?.includes('Rebate') ? '- Base Tax' : '₹0'}</strong></div>
-               <div style={{ display: 'flex', justifyContent: 'space-between' }}><span style={{ color: '#64748b' }}>Surcharge:</span> <strong>Not yet computed</strong></div>
-               <div style={{ display: 'flex', justifyContent: 'space-between' }}><span style={{ color: '#64748b' }}>Health & Education CESS (4%):</span> <strong>{c.annualTax > 0 ? '+ 4%' : '₹0'}</strong></div>
+               <div style={{ display: 'flex', justifyContent: 'space-between' }}><span style={{ color: '#64748b' }}>Base Tax (Progressive Slabs):</span> <strong>{c.taxFormulaDetail?.split(' = ')[0] || '₹0'}</strong></div>
+               <div style={{ display: 'flex', justifyContent: 'space-between' }}><span style={{ color: '#64748b' }}>Rebate u/s 87A <i>(Income &lt;= {emp.taxRegime === 'new' ? '7L' : '5L'} ? -Base Tax : 0)</i>:</span> <strong style={{ color: '#059669' }}>{c.taxFormulaDetail?.includes('Rebate') ? '- Base Tax' : '₹0'}</strong></div>
+               <div style={{ display: 'flex', justifyContent: 'space-between' }}><span style={{ color: '#64748b' }}>Surcharge <i>(Income &gt; 50L)</i>:</span> <strong>{c.taxFormulaDetail?.includes('Surcharge') ? 'Applied' : '₹0 (N/A)'}</strong></div>
+               <div style={{ display: 'flex', justifyContent: 'space-between' }}><span style={{ color: '#64748b' }}>Health & Education CESS <i>((Base - Rebate + Surcharge) × 4%)</i>:</span> <strong>{c.annualTax > 0 ? '+ 4%' : '₹0'}</strong></div>
                <div style={{ borderTop: '1px dashed #cbd5e1', margin: '4px 0' }}></div>
                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 15, fontWeight: 700 }}><span style={{ color: '#0f172a' }}>Annual Tax Liability:</span> <span style={{ color: '#dc2626' }}>₹{fmt(c.annualTax)}</span></div>
             </div>
           </div>
 
-          <div style={{ background: '#f0f9ff', border: '1px solid #bae6fd', borderRadius: 12, overflow: 'hidden' }}>
+          <div style={{ background: '#f0f9ff', border: '1px solid #bae6fd', borderRadius: 12, overflow: 'hidden', flexShrink: 0 }}>
             <div style={{ background: '#e0f2fe', padding: '10px 16px', fontSize: 12, fontWeight: 700, color: '#0369a1', textTransform: 'uppercase', letterSpacing: 0.5 }}>5. TDS & Recovery Logic</div>
             <div style={{ padding: '16px', fontSize: 13, display: 'flex', flexDirection: 'column', gap: 10 }}>
               <div style={{ display: 'flex', justifyContent: 'space-between' }}><span style={{ color: '#64748b' }}>YTD Tax Already Deducted:</span> <strong>₹{fmt(emp.tdsDeductedSoFar)}</strong></div>
-              <div style={{ display: 'flex', justifyContent: 'space-between' }}><span style={{ color: '#64748b' }}>Remaining Deficit:</span> <strong>₹{fmt(Math.max(0, c.annualTax - (emp.tdsDeductedSoFar || 0)))}</strong></div>
+              <div style={{ display: 'flex', justifyContent: 'space-between' }}><span style={{ color: '#64748b' }}>Remaining Deficit <i>(Annual Tax - YTD Tax)</i>:</span> <strong>₹{fmt(Math.max(0, c.annualTax - (emp.tdsDeductedSoFar || 0)))}</strong></div>
               <div style={{ display: 'flex', justifyContent: 'space-between' }}><span style={{ color: '#64748b' }}>Remaining Months in FY:</span> <strong>{emp.monthsRemaining}</strong></div>
-              {emp.oneTimeTaxDeduction > 0 && <div style={{ display: 'flex', justifyContent: 'space-between' }}><span style={{ color: '#64748b' }}>One-Time Override / Additional Tax:</span> <strong>₹{fmt(emp.oneTimeTaxDeduction)}</strong></div>}
+              {emp.oneTimeTaxDeduction > 0 && <div style={{ display: 'flex', justifyContent: 'space-between' }}><span style={{ color: '#64748b' }}>One-Time Variable Tax <i>(Deducted explicitly this month)</i>:</span> <strong>₹{fmt(emp.oneTimeTaxDeduction)}</strong></div>}
               <div style={{ borderTop: '1px dashed #bae6fd', margin: '4px 0' }}></div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 18, fontWeight: 800, color: '#0369a1' }}>
-                 <span>Final Monthly TDS Target:</span>
-                 <span>₹{fmt(c.tds)}</span>
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 4 }}>
+                 <div style={{ display: 'flex', justifyContent: 'space-between', width: '100%', fontSize: 18, fontWeight: 800, color: '#0369a1' }}>
+                    <span>Final Monthly TDS Target:</span>
+                    <span>₹{fmt(c.tds)}</span>
+                 </div>
+                 <div style={{ fontSize: 11, color: '#0284c7', fontStyle: 'italic' }}>Formula: (Deficit ÷ Months) {emp.oneTimeTaxDeduction > 0 ? '+ One-Time Tax' : ''}</div>
               </div>
             </div>
           </div>
