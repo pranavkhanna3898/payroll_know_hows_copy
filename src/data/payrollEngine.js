@@ -258,6 +258,8 @@ export const computeEmployeePayroll = (emp) => {
     savingsInterest80TTA = 0,
     ltaClaimed = 0,
     monthlyRentPaid = 0,
+    rent_city = '',
+    oneTimeTaxDeduction = 0,
     tdsDeductedSoFar = 0,
     ytdGross,
     ytdBasic,
@@ -361,8 +363,10 @@ export const computeEmployeePayroll = (emp) => {
 
   const standardGross = standardBasic + standardHRA + standardSpecial + variableTarget +
     (reimbursementTaxStrategy === 'monthly' ? monthlyReimbursements : 0);
+  const standardGrossForProj = standardBasic + standardHRA + standardSpecial +
+    (reimbursementTaxStrategy === 'monthly' ? monthlyReimbursements : 0);
   const totalMonthlyCTC = standardGross + (reimbursementTaxStrategy === 'year_end' ? monthlyReimbursements : 0) +
-    employerContribs + variableTarget;
+    employerContribs;
 
   // ── ATTENDANCE ─────────────────────────────────────────────────────────────
   const attendanceFactor = daysInMonth > 0 ? Math.max(0, (daysInMonth - lopDays) / daysInMonth) : 0;
@@ -431,15 +435,12 @@ export const computeEmployeePayroll = (emp) => {
 
     if (payrollYear !== undefined && payrollMonth >= 0) {
       if (exitYear === payrollYear || exitYear === payrollYear + 1) {
-        // Calculate exact days divided by 30 to get rounded up months
         const payrollStart = new Date(payrollYear, payrollMonth, 1);
-        const daysDiff = (exitDateObj.getTime() - payrollStart.getTime()) / (1000 * 60 * 60 * 24);
-        
-        if (daysDiff > 0) {
-           let delta = Math.ceil(daysDiff / 30);
-           if (delta > 0 && delta < monthBasedMonthsRemaining) {
-              monthBasedMonthsRemaining = delta;
-           }
+        if (exitDateObj >= payrollStart) {
+          const delta = (exitYear - payrollStart.getFullYear()) * 12 + exitDateObj.getMonth() - payrollStart.getMonth() + 1;
+          if (delta > 0 && delta < monthBasedMonthsRemaining) {
+            monthBasedMonthsRemaining = delta;
+          }
         } else {
            monthBasedMonthsRemaining = 1;
         }
@@ -456,7 +457,7 @@ export const computeEmployeePayroll = (emp) => {
     : Math.max(0, 12 - effectiveMonthsRemaining);
   const futureMonths = Math.max(0, effectiveMonthsRemaining - 1);
 
-  const annualGross = (ytdGross !== undefined ? ytdGross : standardGross * pastMonths) + grossSalary + (standardGross * futureMonths);
+  const annualGross = (ytdGross !== undefined ? ytdGross : standardGrossForProj * pastMonths) + grossSalary + (standardGrossForProj * futureMonths);
   const annualRent = monthlyRentPaid * 12;
   const projectedAnnualBasic = (ytdBasic !== undefined ? ytdBasic : standardBasic * pastMonths) + basic + (standardBasic * futureMonths);
   const projectedAnnualHRA = (ytdHRA !== undefined ? ytdHRA : standardHRA * pastMonths) + hra + (standardHRA * futureMonths);
@@ -473,7 +474,7 @@ export const computeEmployeePayroll = (emp) => {
     deductions80GE,
     savingsInterest80TTA,
     ltaClaimed,
-    isMetro: isMetroCity(work_city),
+    isMetro: isMetroCity(rent_city || work_city),
     standardHRA: standardHRA * 12,
     projectedAnnualBasic,
     projectedAnnualHRA,
@@ -487,7 +488,9 @@ export const computeEmployeePayroll = (emp) => {
     hraActual, hraRentExcess, hraCityLimit
   } = taxCalc;
   const remainingTax = Math.max(0, annualTax - tdsDeductedSoFar);
+  const oneTimeTax = Number(oneTimeTaxDeduction) || 0;
   let tds = effectiveMonthsRemaining > 0 ? remainingTax / effectiveMonthsRemaining : 0;
+  tds += oneTimeTax;
 
   // ── EPF / ESIC / PT / LWF ─────────────────────────────────────────────────
   let pfEmployee = 0;
@@ -525,34 +528,74 @@ export const computeEmployeePayroll = (emp) => {
     tds = Math.max(0, netPayBeforeTDS);
   }
 
-  const totalDeductions = totalDeductionsWithoutTDS + tds;
-  const netPay = grossSalary - totalDeductions + (reimbursementTaxStrategy === 'year_end' ? monthlyReimbursements : 0);
+  const finalTds = Math.round(tds);
+  const finalTotalDeductions = Math.round(totalDeductionsWithoutTDS + finalTds);
+  const finalNetPay = Math.round(grossSalary - finalTotalDeductions + (reimbursementTaxStrategy === 'year_end' ? monthlyReimbursements : 0));
+
+  const rnd = Math.round;
 
   return {
     // Input mirrors
     components,
-    standardBasic, standardHRA, standardSpecial, monthlyReimbursements,
-    employerContribs, employeeDeductions, variableTarget, variablePay,
-    leaveEncashmentDays, leaveEncashmentPay, exit_date, exit_reason,
-    tdsDeductedSoFar,
+    standardBasic: rnd(standardBasic), 
+    standardHRA: rnd(standardHRA), 
+    standardSpecial: rnd(standardSpecial), 
+    monthlyReimbursements: rnd(monthlyReimbursements),
+    employerContribs: rnd(employerContribs), 
+    employeeDeductions: rnd(employeeDeductions), 
+    variableTarget: rnd(variableTarget), 
+    variablePay: rnd(variablePay),
+    leaveEncashmentDays, 
+    leaveEncashmentPay: rnd(leaveEncashmentPay), 
+    exit_date, 
+    exit_reason,
+    tdsDeductedSoFar: rnd(tdsDeductedSoFar),
+    oneTimeTaxDeduction: rnd(oneTimeTax),
 
     // Monthly computed
     attendanceFactor, attendedDays,
-    basic, hra, special, overtimePay, arrearsPay, leaveEncashmentPay,
-    grossSalary, standardGross, totalMonthlyCTC,
-    fixedGross: basic + hra + special,
+    basic: rnd(basic), 
+    hra: rnd(hra), 
+    special: rnd(special), 
+    overtimePay: rnd(overtimePay), 
+    arrearsPay: rnd(arrearsPay), 
+    leaveEncashmentPay: rnd(leaveEncashmentPay),
+    grossSalary: rnd(grossSalary), 
+    standardGross: rnd(standardGross), 
+    totalMonthlyCTC: rnd(totalMonthlyCTC),
+    fixedGross: rnd(basic + hra + special),
 
     // Tax
-    annualGross, taxableIncome, annualTax, tds,
-    taxFormulaDetail, calculatedHraExempt, hraFormulaString,
-    hraActual, hraRentExcess, hraCityLimit,
-    annualRent, projectedAnnualBasic, projectedAnnualHRA,
-    pastMonths, futureMonths, ytdGross, monthsRemaining: effectiveMonthsRemaining,
+    annualGross: rnd(annualGross), 
+    taxableIncome: rnd(taxableIncome), 
+    annualTax: rnd(annualTax), 
+    tds: finalTds,
+    taxFormulaDetail, 
+    calculatedHraExempt: rnd(calculatedHraExempt), 
+    hraFormulaString,
+    hraActual: rnd(hraActual), 
+    hraRentExcess: rnd(hraRentExcess), 
+    hraCityLimit: rnd(hraCityLimit),
+    annualRent: rnd(annualRent), 
+    projectedAnnualBasic: rnd(projectedAnnualBasic), 
+    projectedAnnualHRA: rnd(projectedAnnualHRA),
+    pastMonths, futureMonths, 
+    ytdGross: ytdGross !== undefined ? rnd(ytdGross) : undefined, 
+    monthsRemaining: effectiveMonthsRemaining,
 
     // Deductions
-    pfEmployee, pfEmployer, pfEps, pfErShare,
-    esiEmployee, esiEmployer, pt, lwf,
-    totalDeductions, netPay,
-    arrearsBreakup, arrearsValidation, engineValidations
+    pfEmployee: rnd(pfEmployee), 
+    pfEmployer: rnd(pfEmployer), 
+    pfEps: rnd(pfEps), 
+    pfErShare: rnd(pfErShare),
+    esiEmployee: rnd(esiEmployee), 
+    esiEmployer: rnd(esiEmployer), 
+    pt: rnd(pt), 
+    lwf: rnd(lwf),
+    totalDeductions: finalTotalDeductions, 
+    netPay: finalNetPay,
+    arrearsBreakup: arrearsBreakup.map(a => ({...a, amount: rnd(a.amount)})), 
+    arrearsValidation, 
+    engineValidations
   };
 };

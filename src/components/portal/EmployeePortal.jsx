@@ -247,10 +247,9 @@ export default function EmployeePortal() {
             </div>
             {/* Property & Others */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
-              <h4 style={{ margin: 0, color: '#334155', fontSize: 13, fontWeight: 800, textTransform: 'uppercase', letterSpacing: 0.4 }}>Property & Rent</h4>
+              <h4 style={{ margin: 0, color: '#334155', fontSize: 13, fontWeight: 800, textTransform: 'uppercase', letterSpacing: 0.4 }}>Property & Others</h4>
               {[
                 { key: 'homeLoanInterest',  label: 'Home Loan Interest (Sec 24, Max ₹2L)' },
-                { key: 'monthlyRentPaid',   label: 'Monthly Rent Paid (for HRA exemption)' },
                 { key: 'ltaClaimed',        label: 'LTA Claimed' },
                 { key: 'savingsInterest80TTA', label: '80TTA / 80TTB — Savings Interest' },
               ].map(({ key, label }) => (
@@ -264,6 +263,28 @@ export default function EmployeePortal() {
                   </div>
                 </Field>
               ))}
+
+              <div style={{ padding: 16, background: '#f0f9ff', border: '1px solid #bae6fd', borderRadius: 8 }}>
+                <h4 style={{ margin: '0 0 12px', color: '#0369a1', fontSize: 12, fontWeight: 700, textTransform: 'uppercase' }}>HRA / Rent Declaration</h4>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                    <Field label="Total Annual Rent Paid">
+                       <NumberInput value={declForm['monthlyRentPaid']} onChange={v => handleDeclChange('monthlyRentPaid', v)} disabled={!canSubmitDecl || isDeclVerified} />
+                    </Field>
+                    <Field label="City of Rent (Determines 50%/40%)">
+                       <input type="text" value={declForm['rent_city'] || ''} onChange={e => handleDeclChange('rent_city', e.target.value)} disabled={!canSubmitDecl || isDeclVerified} placeholder="e.g. Mumbai, Delhi, Pune..." style={{ padding: '8px 12px', border: '1px solid #cbd5e1', borderRadius: 6, width: '100%', fontSize: 13 }} />
+                    </Field>
+                  </div>
+                  <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+                    <label style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'white', borderRadius: 6, padding: '6px 12px', border: '1px solid #cbd5e1', cursor: !canSubmitDecl || isDeclVerified ? 'not-allowed' : 'pointer', fontSize: 12, color: '#475569' }}>
+                      📎 {declFiles['monthlyRentPaid'] ? declFiles['monthlyRentPaid'].name.substring(0, 20) + '…' : 'Attach Rent Agreement / Receipts'}
+                      <input type="file" style={{ display: 'none' }} onChange={e => handleDeclFileChange('monthlyRentPaid', e)} disabled={!canSubmitDecl || isDeclVerified} />
+                    </label>
+                    <span style={{ fontSize: 11, color: '#64748b' }}>(If month-on-month entry is needed, attach breakdown in proofs)</span>
+                  </div>
+                </div>
+              </div>
+
             </div>
           </div>
 

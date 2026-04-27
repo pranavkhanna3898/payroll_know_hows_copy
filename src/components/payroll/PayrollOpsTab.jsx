@@ -7,15 +7,13 @@ import PayrollOps_Review from './PayrollOps_Review';
 import PayrollOps_Tax from './PayrollOps_Tax';
 import PayrollOps_Confirm from './PayrollOps_Confirm';
 import PayrollOps_SlipViewer from './PayrollOps_SlipViewer';
-import PayrollOps_TaxReport from './PayrollOps_TaxReport';
 
 const STEPS = [
   { id: 0, icon: '▶', label: 'Initiate' },
   { id: 1, icon: '👀', label: 'Review & Adjust' },
   { id: 2, icon: '📊', label: 'Tax & TDS' },
-  { id: 3, icon: '📋', label: 'Tax Report' },
-  { id: 4, icon: '✅', label: 'Confirm & Export' },
-  { id: 5, icon: '🧾', label: 'Salary Slips' },
+  { id: 3, icon: '✅', label: 'Confirm & Export' },
+  { id: 4, icon: '🧾', label: 'Salary Slips' },
 ];
 
 export default function PayrollOpsTab() {
@@ -315,7 +313,7 @@ export default function PayrollOpsTab() {
       };
       
       setActivePayrun(sessionPayrun);
-      const statusStepMap = { initiated: 1, reviewed: 2, tax_checked: 3, confirmed: 5, completed: 5 };
+      const statusStepMap = { initiated: 1, reviewed: 2, tax_checked: 3, confirmed: 4, completed: 4 };
       setStep(statusStepMap[payrun.status] ?? 1);
     } catch (e) {
       alert('Error opening payrun: ' + e.message);
@@ -390,7 +388,7 @@ export default function PayrollOpsTab() {
       const confirmed = { ...activePayrun, status: 'confirmed', confirmedAt: new Date().toISOString() };
       setPayruns(prev => prev.map(p => p.id === confirmed.id ? confirmed : p));
       setActivePayrun(confirmed);
-      setStep(5);
+      setStep(4);
     } catch (e) {
       alert('Error confirming payrun: ' + e.message);
     }
@@ -440,7 +438,7 @@ export default function PayrollOpsTab() {
     store, activePayrun, payrunEmployees,
     updateAdjustment, updateTaxOverride, toggleSlip, publishAll,
     companySettings,
-    onNext: () => setStep(s => Math.min(5, s + 1)),
+    onNext: () => setStep(s => Math.min(4, s + 1)),
     onBack: () => setStep(s => Math.max(0, s - 1)),
   };
 
@@ -475,9 +473,8 @@ export default function PayrollOpsTab() {
           {step === 0 && <PayrollOps_Initiate store={store} onInitiate={initiatePayrun} onOpenPayrun={openPayrun} onDeletePayrun={handleDeletePayrun} onUnlockPayrun={unlockPayrun} />}
           {step === 1 && activePayrun && payrunEmployees.length > 0 && <PayrollOps_Review {...sharedProps} />}
           {step === 2 && activePayrun && payrunEmployees.length > 0 && <PayrollOps_Tax {...sharedProps} />}
-          {step === 3 && activePayrun && payrunEmployees.length > 0 && <PayrollOps_TaxReport {...sharedProps} />}
-          {step === 4 && activePayrun && payrunEmployees.length > 0 && <PayrollOps_Confirm {...sharedProps} onConfirm={confirmPayrun} />}
-          {step === 5 && activePayrun && payrunEmployees.length > 0 && <PayrollOps_SlipViewer {...sharedProps} onComplete={completePayrun} />}
+          {step === 3 && activePayrun && payrunEmployees.length > 0 && <PayrollOps_Confirm {...sharedProps} onConfirm={confirmPayrun} />}
+          {step === 4 && activePayrun && payrunEmployees.length > 0 && <PayrollOps_SlipViewer {...sharedProps} onComplete={completePayrun} />}
         </div>
       </div>
     </div>

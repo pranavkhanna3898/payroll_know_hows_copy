@@ -11,6 +11,14 @@ const InputField = ({ label, value, onChange }) => (
   </div>
 );
 
+const TextInputField = ({ label, value, onChange }) => (
+  <div style={{ display: 'flex', flexDirection: 'column', gap: 4, flex: 1 }}>
+    <label style={{ fontSize: 10, fontWeight: 700, color: '#475569', textTransform: 'uppercase' }}>{label}</label>
+    <input type="text" value={value || ''} onChange={e => onChange(e.target.value)}
+      style={{ padding: '6px 10px', border: '1px solid #cbd5e1', borderRadius: 6, fontSize: 12 }} />
+  </div>
+);
+
 export default function FinanceVerificationTab() {
   const [submissions, setSubmissions] = useState([]);
   const [employees, setEmployees] = useState([]);
@@ -177,6 +185,21 @@ export default function FinanceVerificationTab() {
               </div>
             );
 
+            const VerificationTextRow = ({ label, fieldName }) => (
+              <div style={{ display: 'grid', gridTemplateColumns: 'minmax(120px, 1.5fr) 1fr 1fr', gap: 16, alignItems: 'center', padding: '8px 0', borderBottom: '1px dashed #e2e8f0' }}>
+                <div>
+                  <div style={{ fontWeight: 600, fontSize: 13, color: '#1e293b' }}>{label}</div>
+                </div>
+                <div>
+                  <div style={{ fontSize: 10, color: '#64748b', textTransform: 'uppercase', marginBottom: 2 }}>Declared</div>
+                  <div style={{ fontWeight: 600, color: '#64748b' }}>{data[fieldName] || 'None'}</div>
+                </div>
+                <div>
+                  <TextInputField label="Verified Value" value={verifiedData[fieldName]} onChange={v => handleVerifiedChange(fieldName, v)} />
+                </div>
+              </div>
+            );
+
             return (
               <div style={{ animation: 'fadeIn 0.2s' }}>
                 <h3 style={{ margin: '0 0 16px', borderBottom: '1px solid #e2e8f0', paddingBottom: 12, display: 'flex', justifyContent: 'space-between' }}>
@@ -198,7 +221,8 @@ export default function FinanceVerificationTab() {
                     <VerificationRow label="NPS 80CCD(1B)" fieldName="nps80CCD1B" />
                     <VerificationRow label="80G/80E" fieldName="deductions80GE" />
                     <VerificationRow label="Sec 24 Home Loan" fieldName="homeLoanInterest" />
-                    <VerificationRow label="Monthly Rent" fieldName="monthlyRentPaid" />
+                    <VerificationRow label="Total Annual Rent" fieldName="monthlyRentPaid" />
+                    <VerificationTextRow label="City of Rent" fieldName="rent_city" />
                     <VerificationRow label="80TTA/TTB" fieldName="savingsInterest80TTA" />
                   </div>
                 )}
