@@ -8,13 +8,13 @@ export default function Step2_Tax({ state }) {
     updateData, grossSalary, annualGross, taxableIncome, annualTax, tds, taxFormulaDetail,
     calculatedHraExempt, hraFormulaString,
     hraActual, hraRentExcess, hraCityLimit,
-    standardGross, pastMonths, futureMonths, ytdGross,
+    standardGross, standardGrossForProj, pastMonths, futureMonths, ytdGross,
   } = state;
 
   // ── Salary projection components ──────────────────────────────────────────
-  const ytdSalary   = ytdGross !== undefined ? ytdGross : Math.round(standardGross * pastMonths);
+  const ytdSalary   = ytdGross !== undefined ? ytdGross : Math.round((standardGrossForProj || standardGross) * pastMonths);
   const currentGross = Math.round(grossSalary);
-  const projectedSalary = Math.round(standardGross * futureMonths);  // remaining months only
+  const projectedSalary = Math.round((standardGrossForProj || standardGross) * futureMonths);  // remaining months only
   const totalAnnualSalary = ytdSalary + currentGross + projectedSalary;
 
   return (
@@ -101,10 +101,7 @@ export default function Step2_Tax({ state }) {
           </div>
         </div>
 
-        <div className="sim-output-box">
-          <h4>Calculation Breakup: Taxable Income &amp; TDS</h4>
-
-          {/* ① Annualize — 3-part salary projection */}
+        <div classNa          {/* ① Annualize — 3-part salary projection */}
           <div style={{ background: '#f8fafc', borderRadius: 6, padding: '12px 14px', marginBottom: 10, fontSize: 12 }}>
             <div style={{ fontWeight: 700, color: '#475569', marginBottom: 10 }}>① Salary Projection Breakup</div>
 
@@ -113,7 +110,7 @@ export default function Step2_Tax({ state }) {
               <div>
                 <div style={{ fontWeight: 700, color: '#334155', fontSize: 11 }}>YTD Salary (Months Elapsed: {pastMonths})</div>
                 <div style={{ color: '#64748b', fontSize: 11 }}>
-                  {ytdGross !== undefined ? 'From YTD records' : `Standard Gross ₹${standardGross.toLocaleString()} × ${pastMonths} months`}
+                  {ytdGross !== undefined ? 'From YTD records' : `Standard Gross ₹${(standardGrossForProj || standardGross).toLocaleString()} × ${pastMonths} months`}
                 </div>
               </div>
               <div style={{ fontWeight: 700, color: '#334155', fontSize: 13 }}>₹{ytdSalary.toLocaleString()}</div>
@@ -132,13 +129,13 @@ export default function Step2_Tax({ state }) {
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#f0fdf4', borderRadius: 6, padding: '8px 12px', marginBottom: 10, fontFamily: 'monospace', border: '1px solid #bbf7d0' }}>
               <div>
                 <div style={{ fontWeight: 700, color: '#15803d', fontSize: 11 }}>Projected Salary (Remaining: {futureMonths} months)</div>
-                <div style={{ color: '#16a34a', fontSize: 11 }}>Standard Gross ₹{standardGross.toLocaleString()} × {futureMonths} months</div>
+                <div style={{ color: '#16a34a', fontSize: 11 }}>Standard Gross ₹{(standardGrossForProj || standardGross).toLocaleString()} × {futureMonths} months</div>
               </div>
               <div style={{ fontWeight: 700, color: '#15803d', fontSize: 13 }}>₹{projectedSalary.toLocaleString()}</div>
             </div>
 
             {/* Total Annual Salary */}
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#1e293b', borderRadius: 6, padding: '10px 14px', fontFamily: 'monospace' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#1e293b', borderRadius: 6, padding: '10px 14px', fontFamily: 'monospace' }}>gnItems: 'center', background: '#1e293b', borderRadius: 6, padding: '10px 14px', fontFamily: 'monospace' }}>
               <div>
                 <div style={{ fontWeight: 800, color: '#94a3b8', fontSize: 11, textTransform: 'uppercase', letterSpacing: 0.5 }}>Total Annual Salary</div>
                 <div style={{ color: '#7dd3fc', fontSize: 10 }}>YTD + Current Month + Projected Remaining</div>

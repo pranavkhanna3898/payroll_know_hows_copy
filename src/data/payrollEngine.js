@@ -582,6 +582,7 @@ export const computeEmployeePayroll = (emp) => {
     pastMonths, futureMonths, 
     ytdGross: ytdGross !== undefined ? rnd(ytdGross) : undefined, 
     monthsRemaining: effectiveMonthsRemaining,
+    standardGrossForProj: rnd(standardGrossForProj),
 
     // Deductions
     pfEmployee: rnd(pfEmployee), 
