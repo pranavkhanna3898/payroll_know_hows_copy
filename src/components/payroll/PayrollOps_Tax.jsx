@@ -40,7 +40,7 @@ function TaxReportModal({ emp, onClose }) {
                   <div style={{ fontWeight: 700, color: '#334155', fontSize: 12 }}>YTD Salary (Months Elapsed: {c.pastMonths})</div>
                   <div style={{ fontSize: 11, color: '#64748b', marginTop: 2 }}>Salary already paid in this FY</div>
                 </div>
-                <div style={{ fontWeight: 600, fontSize: 14 }}>₹{fmt(c.ytdGross !== undefined ? c.ytdGross : c.standardGross * c.pastMonths)}</div>
+                <div style={{ fontWeight: 600, fontSize: 14 }}>₹{fmt(c.ytdGross !== undefined ? c.ytdGross : (c.standardGrossForProj || c.standardGross) * c.pastMonths)}</div>
               </div>
 
               {/* Current Month */}
@@ -56,9 +56,9 @@ function TaxReportModal({ emp, onClose }) {
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#f8fafc', borderRadius: 6, padding: '10px 12px', fontFamily: 'monospace' }}>
                 <div>
                   <div style={{ fontWeight: 700, color: '#334155', fontSize: 12 }}>Projected Salary (Remaining Months: {c.futureMonths})</div>
-                  <div style={{ fontSize: 11, color: '#64748b', marginTop: 2 }}>Assumes full base salary (₹{fmt(c.standardGross)}/m) going forward</div>
+                  <div style={{ fontSize: 11, color: '#64748b', marginTop: 2 }}>Assumes full base salary (₹{fmt(c.standardGrossForProj || c.standardGross)}/m) going forward</div>
                 </div>
-                <div style={{ fontWeight: 600, fontSize: 14, color: '#0369a1' }}>₹{fmt(c.standardGross * c.futureMonths)}</div>
+                <div style={{ fontWeight: 600, fontSize: 14, color: '#0369a1' }}>₹{fmt((c.standardGrossForProj || c.standardGross) * c.futureMonths)}</div>
               </div>
 
               {/* Total Summary */}
