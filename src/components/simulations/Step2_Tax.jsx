@@ -138,12 +138,12 @@ export default function Step2_Tax({ state }) {
             </div>
 
             {/* Total Annual Salary */}
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#1e293b', borderRadius: 6, padding: '10px 14px', fontFamily: 'monospace' }}>gnItems: 'center', background: '#1e293b', borderRadius: 6, padding: '10px 14px', fontFamily: 'monospace' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#1e293b', borderRadius: 6, padding: '10px 14px', fontFamily: 'monospace' }}>
               <div>
                 <div style={{ fontWeight: 800, color: '#94a3b8', fontSize: 11, textTransform: 'uppercase', letterSpacing: 0.5 }}>Total Annual Salary</div>
                 <div style={{ color: '#7dd3fc', fontSize: 10 }}>YTD + Current Month + Projected Remaining</div>
               </div>
-              <div style={{ fontWeight: 800, color: '#fff', fontSize: 18 }}>₹{totalAnnualSalary.toLocaleString()}</div>
+              <div style={{ fontWeight: 800, color: '#fff', fontSize: 18 }}>₹{Number.isInteger(totalAnnualSalary) ? totalAnnualSalary.toLocaleString('en-IN') : totalAnnualSalary.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
             </div>
           </div>
 

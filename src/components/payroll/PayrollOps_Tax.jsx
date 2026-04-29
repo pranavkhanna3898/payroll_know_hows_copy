@@ -1,7 +1,13 @@
 import { useState } from 'react';
 import { isMetroCity } from '../../data/payrollEngine';
 
-const fmt = v => Math.round(v || 0).toLocaleString('en-IN');
+const fmt = v => {
+  if (!v) return '0';
+  const num = Number(v);
+  return Number.isInteger(num) 
+    ? num.toLocaleString('en-IN') 
+    : num.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+};
 const shouldShowArrearBreakup = (settings, section) => {
   if (settings?.arrearDisplayMode !== 'breakup') return false;
   const visibleIn = settings?.arrearBreakupVisibility;
