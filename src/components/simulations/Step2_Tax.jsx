@@ -9,6 +9,7 @@ export default function Step2_Tax({ state }) {
     calculatedHraExempt, hraFormulaString,
     hraActual, hraRentExcess, hraCityLimit,
     standardGross, standardGrossForProj, pastMonths, futureMonths, ytdGross,
+    variableTaxMode, variableInducedTax, variablePay,
   } = state;
 
   // ── Salary projection components ──────────────────────────────────────────
@@ -99,6 +100,27 @@ export default function Step2_Tax({ state }) {
             <label>Rem. Months in FY</label>
             <input type="number" value={monthsRemaining} min="1" max="12" onChange={(e) => updateData('monthsRemaining', e.target.value)} />
           </div>
+          {variablePay > 0 && (
+            <div className="sim-input-group">
+              <label className="has-tooltip" data-tooltip="Spread: distributes total deficit over remaining months. Lump-Sum: charges extra tax from variable pay in the same month; all other months stay flat.">Variable Tax Mode</label>
+              <div style={{ display: 'flex', background: '#e2e8f0', padding: 3, borderRadius: 8 }}>
+                <button
+                  onClick={() => updateData('variableTaxMode', 'spread')}
+                  style={{ flex: 1, padding: '6px 10px', border: 'none', borderRadius: 6, fontWeight: 600, fontSize: 12, cursor: 'pointer',
+                    background: (variableTaxMode || 'spread') === 'spread' ? 'white' : 'transparent',
+                    color: (variableTaxMode || 'spread') === 'spread' ? '#0f172a' : '#64748b' }}>
+                  Spread
+                </button>
+                <button
+                  onClick={() => updateData('variableTaxMode', 'lump_sum')}
+                  style={{ flex: 1, padding: '6px 10px', border: 'none', borderRadius: 6, fontWeight: 600, fontSize: 12, cursor: 'pointer',
+                    background: variableTaxMode === 'lump_sum' ? '#fef3c7' : 'transparent',
+                    color: variableTaxMode === 'lump_sum' ? '#b45309' : '#64748b' }}>
+                  Lump-Sum
+                </button>
+              </div>
+            </div>
+          )}
         </div>
 
         <div className="sim-output-box">
@@ -190,13 +212,31 @@ export default function Step2_Tax({ state }) {
           {/* ④ TDS */}
           <div style={{ background: '#1e293b', borderRadius: 6, padding: '12px 14px', fontSize: 13 }}>
             <div style={{ fontWeight: 700, color: '#94a3b8', marginBottom: 4 }}>④ Monthly TDS Recovery</div>
-            <div style={{ fontFamily: 'monospace', color: '#7dd3fc', fontSize: 11, lineHeight: 1.8 }}>
-              = (Annual Tax − TDS Deducted So Far) ÷ Remaining Months<br/>
-              = (₹{Math.round(annualTax).toLocaleString()} − ₹{tdsDeductedSoFar.toLocaleString()}) ÷ {monthsRemaining} months
-            </div>
-            <div style={{ fontSize: 20, fontWeight: 800, color: '#fff', marginTop: 8 }}>
-              = ₹ {tds.toLocaleString(undefined, {maximumFractionDigits: 2})} / month
-            </div>
+            {variableTaxMode === 'lump_sum' && variableInducedTax > 0 ? (
+              <>
+                <div style={{ fontFamily: 'monospace', color: '#7dd3fc', fontSize: 11, lineHeight: 1.8 }}>
+                  Regular TDS = (Annual Tax without Variable − TDS So Far) ÷ Remaining Months<br/>
+                  Variable-Induced Tax = ₹{(annualTax - (tds - variableInducedTax)).toLocaleString(undefined, { maximumFractionDigits: 2 })} (incremental tax on variable pay)<br/>
+                  <span style={{ color: '#fbbf24' }}>This Month’s TDS = Regular TDS + Variable-Induced Tax</span>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 8 }}>
+                  <span style={{ fontSize: 11, color: '#94a3b8', fontStyle: 'italic' }}>Variable-induced tax: ₹{variableInducedTax.toLocaleString(undefined, { maximumFractionDigits: 2 })}</span>
+                  <div style={{ fontSize: 20, fontWeight: 800, color: '#fff' }}>
+                    ₹ {tds.toLocaleString(undefined, { maximumFractionDigits: 2 })} / month
+                  </div>
+                </div>
+              </>
+            ) : (
+              <>
+                <div style={{ fontFamily: 'monospace', color: '#7dd3fc', fontSize: 11, lineHeight: 1.8 }}>
+                  = (Annual Tax − TDS Deducted So Far) ÷ Remaining Months<br/>
+                  = (₹{Math.round(annualTax).toLocaleString()} − ₹{tdsDeductedSoFar.toLocaleString()}) ÷ {monthsRemaining} months
+                </div>
+                <div style={{ fontSize: 20, fontWeight: 800, color: '#fff', marginTop: 8 }}>
+                  = ₹ {tds.toLocaleString(undefined, {maximumFractionDigits: 2})} / month
+                </div>
+              </>
+            )}
           </div>
         </div>
       </div>

@@ -258,6 +258,7 @@ export default function PayrollOpsTab() {
           payrollMonth: payrollMonthIndex,
           payrollYear: activePayrun.year || Number((activePayrun.month_year || '').split(' ')[1]) || new Date().getFullYear(),
           ptHalfYearlyMode: companySettings?.ptHalfYearlyMode || 'lump_sum',
+          variableTaxMode: taxOv.variableTaxMode ?? companySettings?.variableTaxMode ?? 'spread',
         };
 
         // Inject variable payouts into components

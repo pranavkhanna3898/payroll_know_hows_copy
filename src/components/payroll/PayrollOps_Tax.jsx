@@ -146,13 +146,23 @@ function TaxReportModal({ emp, onClose }) {
               <div style={{ display: 'flex', justifyContent: 'space-between' }}><span style={{ color: '#64748b' }}>Remaining Deficit <i>(Annual Tax - YTD Tax)</i>:</span> <strong>₹{fmt(Math.max(0, c.annualTax - (emp.tdsDeductedSoFar || 0)))}</strong></div>
               <div style={{ display: 'flex', justifyContent: 'space-between' }}><span style={{ color: '#64748b' }}>Remaining Months in FY:</span> <strong>{emp.monthsRemaining}</strong></div>
               {emp.oneTimeTaxDeduction > 0 && <div style={{ display: 'flex', justifyContent: 'space-between' }}><span style={{ color: '#64748b' }}>One-Time Variable Tax <i>(Deducted explicitly this month)</i>:</span> <strong>₹{fmt(emp.oneTimeTaxDeduction)}</strong></div>}
+              {c.variableTaxMode === 'lump_sum' && c.variableInducedTax > 0 && (
+                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                  <span style={{ color: '#b45309' }}>Variable-Induced Tax <i>(Lump-Sum this month)</i>:</span>
+                  <strong style={{ color: '#b45309' }}>₹{fmt(c.variableInducedTax)}</strong>
+                </div>
+              )}
               <div style={{ borderTop: '1px dashed #bae6fd', margin: '4px 0' }}></div>
               <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 4 }}>
                  <div style={{ display: 'flex', justifyContent: 'space-between', width: '100%', fontSize: 18, fontWeight: 800, color: '#0369a1' }}>
                     <span>Final Monthly TDS Target:</span>
                     <span>₹{fmt(c.tds)}</span>
                  </div>
-                 <div style={{ fontSize: 11, color: '#0284c7', fontStyle: 'italic' }}>Formula: (Deficit ÷ Months) {emp.oneTimeTaxDeduction > 0 ? '+ One-Time Tax' : ''}</div>
+                 <div style={{ fontSize: 11, color: '#0284c7', fontStyle: 'italic' }}>
+                   {c.variableTaxMode === 'lump_sum' && c.variableInducedTax > 0
+                     ? 'Formula: (Regular Deficit ÷ Months) + Variable-Induced Tax'
+                     : `Formula: (Deficit ÷ Months) ${emp.oneTimeTaxDeduction > 0 ? '+ One-Time Tax' : ''}`}
+                 </div>
               </div>
             </div>
           </div>
@@ -308,6 +318,31 @@ function TaxCard({ emp, activePayrun, updateTaxOverride, companySettings, onView
                         style={{ width: '100%', padding: '6px 10px', border: '1px solid #cbd5e1', borderRadius: 6, fontSize: 13, background: '#fef2f2', borderColor: '#fca5a5' }} />
                     </Field>
                   </div>
+                  {c.variablePay > 0 && (
+                    <Field label="Variable Tax Mode" hint="How to distribute tax from variable pay">
+                      <div style={{ display: 'flex', background: '#e2e8f0', padding: 3, borderRadius: 8 }}>
+                        <button
+                          onClick={() => update('variableTaxMode', 'spread')}
+                          style={{ flex: 1, padding: '5px 8px', border: 'none', borderRadius: 6, fontWeight: 600, fontSize: 11, cursor: 'pointer',
+                            background: (field('variableTaxMode') || 'spread') === 'spread' ? 'white' : 'transparent',
+                            color:   (field('variableTaxMode') || 'spread') === 'spread' ? '#0f172a' : '#64748b' }}>
+                          Spread
+                        </button>
+                        <button
+                          onClick={() => update('variableTaxMode', 'lump_sum')}
+                          style={{ flex: 1, padding: '5px 8px', border: 'none', borderRadius: 6, fontWeight: 600, fontSize: 11, cursor: 'pointer',
+                            background: field('variableTaxMode') === 'lump_sum' ? '#fef3c7' : 'transparent',
+                            color:   field('variableTaxMode') === 'lump_sum' ? '#b45309' : '#64748b' }}>
+                          Lump-Sum
+                        </button>
+                      </div>
+                      {field('variableTaxMode') === 'lump_sum' && c.variableInducedTax > 0 && (
+                        <div style={{ marginTop: 4, fontSize: 10, color: '#b45309', fontStyle: 'italic' }}>
+                          Variable-induced tax this month: ₹{fmt(c.variableInducedTax)}
+                        </div>
+                      )}
+                    </Field>
+                  )}
                 </div>
               </div>
             </div>

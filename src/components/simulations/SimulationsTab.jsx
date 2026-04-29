@@ -91,6 +91,7 @@ export default function SimulationsTab() {
     monthsRemaining: 1,
     payrollMonth: new Date().getMonth(),
     ptHalfYearlyMode: 'lump_sum',
+    variableTaxMode: 'spread',
 
     // Step 3/4/5 Inputs
     empName: "John Doe",

@@ -271,7 +271,8 @@ export const computeEmployeePayroll = (emp) => {
     ptHalfYearlyMode = 'lump_sum',
     exit_date,
     exit_reason,
-    salary_status = 'active'
+    salary_status = 'active',
+    variableTaxMode = 'spread',
   } = emp;
 
   if (salary_status === 'withheld' || salary_status === 'absconding') {
@@ -489,8 +490,43 @@ export const computeEmployeePayroll = (emp) => {
   } = taxCalc;
   const remainingTax = Math.max(0, annualTax - tdsDeductedSoFar);
   const oneTimeTax = Number(oneTimeTaxDeduction) || 0;
-  let tds = effectiveMonthsRemaining > 0 ? remainingTax / effectiveMonthsRemaining : 0;
-  tds += oneTimeTax;
+
+  // ── Variable Tax Mode ──────────────────────────────────────────────────────
+  let variableInducedTax = 0;
+  let tds;
+
+  if (variableTaxMode === 'lump_sum' && variablePay > 0) {
+    // Recompute tax on annual gross *without* the variable payout
+    const annualGrossWithoutVar = annualGross - variablePay;
+    const regularTaxCalc = evaluateTaxLiability({
+      annualGross: Math.max(0, annualGrossWithoutVar),
+      taxRegime,
+      investments80C,
+      medical80D_self,
+      medical80D_parents,
+      medical80D_parents_senior,
+      nps80CCD1B,
+      homeLoanInterest,
+      deductions80GE,
+      savingsInterest80TTA,
+      ltaClaimed,
+      isMetro: isMetroCity(rent_city || work_city),
+      standardHRA: standardHRA * 12,
+      projectedAnnualBasic,
+      projectedAnnualHRA,
+      annualRent,
+      leaveEncashmentExempt: exit_reason === 'Retirement' ? Math.min(leaveEncashmentPay, 2500000) : 0
+    });
+    const regularAnnualTax = regularTaxCalc.annualTax;
+    variableInducedTax = Math.max(0, annualTax - regularAnnualTax);
+    const regularRemainingTax = Math.max(0, regularAnnualTax - tdsDeductedSoFar);
+    const regularMonthlyTDS = effectiveMonthsRemaining > 0 ? regularRemainingTax / effectiveMonthsRemaining : 0;
+    tds = regularMonthlyTDS + variableInducedTax + oneTimeTax;
+  } else {
+    // Default: spread mode — distribute entire deficit over remaining months
+    tds = effectiveMonthsRemaining > 0 ? remainingTax / effectiveMonthsRemaining : 0;
+    tds += oneTimeTax;
+  }
 
   // ── EPF / ESIC / PT / LWF ─────────────────────────────────────────────────
   let pfEmployee = 0;
@@ -551,6 +587,8 @@ export const computeEmployeePayroll = (emp) => {
     exit_reason,
     tdsDeductedSoFar: rnd(tdsDeductedSoFar),
     oneTimeTaxDeduction: rnd(oneTimeTax),
+    variableTaxMode,
+    variableInducedTax: rnd(variableInducedTax),
 
     // Monthly computed
     attendanceFactor, attendedDays,
