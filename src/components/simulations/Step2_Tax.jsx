@@ -101,7 +101,10 @@ export default function Step2_Tax({ state }) {
           </div>
         </div>
 
-        <div classNa          {/* ① Annualize — 3-part salary projection */}
+        <div className="sim-output-box">
+          <h4>Calculation Breakup: Taxable Income &amp; TDS</h4>
+
+          {/* ① Annualize — 3-part salary projection */}
           <div style={{ background: '#f8fafc', borderRadius: 6, padding: '12px 14px', marginBottom: 10, fontSize: 12 }}>
             <div style={{ fontWeight: 700, color: '#475569', marginBottom: 10 }}>① Salary Projection Breakup</div>
 
