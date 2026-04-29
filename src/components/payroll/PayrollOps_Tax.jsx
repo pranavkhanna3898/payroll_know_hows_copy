@@ -40,38 +40,49 @@ function TaxReportModal({ emp, onClose }) {
             <div style={{ background: '#f1f5f9', padding: '10px 16px', fontSize: 12, fontWeight: 700, color: '#334155', textTransform: 'uppercase', letterSpacing: 0.5 }}>1. Salary Projection Breakup</div>
             <div style={{ padding: '16px', display: 'flex', flexDirection: 'column', gap: 8, fontSize: 13 }}>
               
-              {/* YTD */}
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#f8fafc', borderRadius: 6, padding: '10px 12px', fontFamily: 'monospace' }}>
-                <div>
-                  <div style={{ fontWeight: 700, color: '#334155', fontSize: 12 }}>YTD Salary (Months Elapsed: {c.pastMonths})</div>
-                  <div style={{ fontSize: 11, color: '#64748b', marginTop: 2 }}>Salary already paid in this FY</div>
-                </div>
-                <div style={{ fontWeight: 600, fontSize: 14 }}>₹{fmt(c.ytdGross !== undefined ? c.ytdGross : (c.standardGrossForProj || c.standardGross) * c.pastMonths)}</div>
-              </div>
+              {(() => {
+                const ytdVal = Math.round(c.ytdGross !== undefined ? c.ytdGross : (c.standardGrossForProj || c.standardGross) * c.pastMonths);
+                const currentVal = Math.round(c.grossSalary);
+                const projectedVal = Math.round((c.standardGrossForProj || c.standardGross) * c.futureMonths);
+                const displayedTotalAnnualSalary = ytdVal + currentVal + projectedVal;
 
-              {/* Current Month */}
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#f8fafc', borderRadius: 6, padding: '10px 12px', fontFamily: 'monospace' }}>
-                <div>
-                  <div style={{ fontWeight: 700, color: '#334155', fontSize: 12 }}>Current Month Gross</div>
-                  <div style={{ fontSize: 11, color: '#64748b', marginTop: 2 }}>Actual gross this month after LOP/prorations</div>
-                </div>
-                <div style={{ fontWeight: 600, fontSize: 14 }}>₹{fmt(c.grossSalary)}</div>
-              </div>
+                return (
+                  <>
+                    {/* YTD */}
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#f8fafc', borderRadius: 6, padding: '10px 12px', fontFamily: 'monospace' }}>
+                      <div>
+                        <div style={{ fontWeight: 700, color: '#334155', fontSize: 12 }}>YTD Salary (Months Elapsed: {c.pastMonths})</div>
+                        <div style={{ fontSize: 11, color: '#64748b', marginTop: 2 }}>Salary already paid in this FY</div>
+                      </div>
+                      <div style={{ fontWeight: 600, fontSize: 14 }}>₹{fmt(ytdVal)}</div>
+                    </div>
 
-              {/* Projected Remaining */}
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#f8fafc', borderRadius: 6, padding: '10px 12px', fontFamily: 'monospace' }}>
-                <div>
-                  <div style={{ fontWeight: 700, color: '#334155', fontSize: 12 }}>Projected Salary (Remaining Months: {c.futureMonths})</div>
-                  <div style={{ fontSize: 11, color: '#64748b', marginTop: 2 }}>Assumes full base salary (₹{fmt(c.standardGrossForProj || c.standardGross)}/m) going forward</div>
-                </div>
-                <div style={{ fontWeight: 600, fontSize: 14, color: '#0369a1' }}>₹{fmt((c.standardGrossForProj || c.standardGross) * c.futureMonths)}</div>
-              </div>
+                    {/* Current Month */}
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#f8fafc', borderRadius: 6, padding: '10px 12px', fontFamily: 'monospace' }}>
+                      <div>
+                        <div style={{ fontWeight: 700, color: '#334155', fontSize: 12 }}>Current Month Gross</div>
+                        <div style={{ fontSize: 11, color: '#64748b', marginTop: 2 }}>Actual gross this month after LOP/prorations</div>
+                      </div>
+                      <div style={{ fontWeight: 600, fontSize: 14 }}>₹{fmt(currentVal)}</div>
+                    </div>
 
-              {/* Total Summary */}
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#e0f2fe', border: '1px solid #bae6fd', borderRadius: 6, padding: '12px 14px', marginTop: 4, fontFamily: 'monospace' }}>
-                <div style={{ fontWeight: 800, color: '#0369a1', fontSize: 14, textTransform: 'uppercase' }}>Total Annual Salary (A)</div>
-                <div style={{ fontWeight: 800, fontSize: 16, color: '#0369a1' }}>₹{fmt(c.annualGross)}</div>
-              </div>
+                    {/* Projected Remaining */}
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#f8fafc', borderRadius: 6, padding: '10px 12px', fontFamily: 'monospace' }}>
+                      <div>
+                        <div style={{ fontWeight: 700, color: '#334155', fontSize: 12 }}>Projected Salary (Remaining Months: {c.futureMonths})</div>
+                        <div style={{ fontSize: 11, color: '#64748b', marginTop: 2 }}>Assumes full base salary (₹{fmt(c.standardGrossForProj || c.standardGross)}/m) going forward</div>
+                      </div>
+                      <div style={{ fontWeight: 600, fontSize: 14, color: '#0369a1' }}>₹{fmt(projectedVal)}</div>
+                    </div>
+
+                    {/* Total Summary */}
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#e0f2fe', border: '1px solid #bae6fd', borderRadius: 6, padding: '12px 14px', marginTop: 4, fontFamily: 'monospace' }}>
+                      <div style={{ fontWeight: 800, color: '#0369a1', fontSize: 14, textTransform: 'uppercase' }}>Total Annual Salary (A)</div>
+                      <div style={{ fontWeight: 800, fontSize: 16, color: '#0369a1' }}>₹{fmt(displayedTotalAnnualSalary)}</div>
+                    </div>
+                  </>
+                );
+              })()}
 
             </div>
           </div>
