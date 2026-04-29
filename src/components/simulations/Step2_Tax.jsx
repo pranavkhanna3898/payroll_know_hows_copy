@@ -6,9 +6,16 @@ export default function Step2_Tax({ state }) {
     taxRegime, investments80C, medical80D_self, medical80D_parents, medical80D_parents_senior, nps80CCD1B, homeLoanInterest, deductions80GE, savingsInterest80TTA, ltaClaimed,
     work_city, monthlyRentPaid, tdsDeductedSoFar, monthsRemaining,
     updateData, grossSalary, annualGross, taxableIncome, annualTax, tds, taxFormulaDetail,
-    calculatedHraExempt, hraFormulaString, 
-    hraActual, hraRentExcess, hraCityLimit
+    calculatedHraExempt, hraFormulaString,
+    hraActual, hraRentExcess, hraCityLimit,
+    standardGross, pastMonths, futureMonths, ytdGross,
   } = state;
+
+  // ── Salary projection components ──────────────────────────────────────────
+  const ytdSalary   = ytdGross !== undefined ? ytdGross : Math.round(standardGross * pastMonths);
+  const currentGross = Math.round(grossSalary);
+  const projectedSalary = Math.round(standardGross * futureMonths);  // remaining months only
+  const totalAnnualSalary = ytdSalary + currentGross + projectedSalary;
 
   return (
     <div className="sim-card sim-card-purple">
@@ -97,13 +104,46 @@ export default function Step2_Tax({ state }) {
         <div className="sim-output-box">
           <h4>Calculation Breakup: Taxable Income &amp; TDS</h4>
 
-          {/* ① Annualize */}
-          <div style={{ background: '#f8fafc', borderRadius: 6, padding: '10px 14px', marginBottom: 10, fontSize: 12 }}>
-            <div style={{ fontWeight: 700, color: '#475569', marginBottom: 6 }}>① Annualization of Gross</div>
-            <div style={{ fontFamily: 'monospace', color: '#64748b', lineHeight: 1.7 }}>
-              Base Projection: ₹{Math.round(state.standardGross * 11).toLocaleString()}<br/>
-              Current Month: ₹{Math.round(grossSalary).toLocaleString()}<br/>
-              <span style={{ color: '#1e40af', fontWeight: 700 }}>Projected Annual Gross = ₹{Math.round(annualGross).toLocaleString()}</span>
+          {/* ① Annualize — 3-part salary projection */}
+          <div style={{ background: '#f8fafc', borderRadius: 6, padding: '12px 14px', marginBottom: 10, fontSize: 12 }}>
+            <div style={{ fontWeight: 700, color: '#475569', marginBottom: 10 }}>① Salary Projection Breakup</div>
+
+            {/* YTD */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#f1f5f9', borderRadius: 6, padding: '8px 12px', marginBottom: 8, fontFamily: 'monospace' }}>
+              <div>
+                <div style={{ fontWeight: 700, color: '#334155', fontSize: 11 }}>YTD Salary (Months Elapsed: {pastMonths})</div>
+                <div style={{ color: '#64748b', fontSize: 11 }}>
+                  {ytdGross !== undefined ? 'From YTD records' : `Standard Gross ₹${standardGross.toLocaleString()} × ${pastMonths} months`}
+                </div>
+              </div>
+              <div style={{ fontWeight: 700, color: '#334155', fontSize: 13 }}>₹{ytdSalary.toLocaleString()}</div>
+            </div>
+
+            {/* Current Month */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#eff6ff', borderRadius: 6, padding: '8px 12px', marginBottom: 8, fontFamily: 'monospace', border: '1px solid #bfdbfe' }}>
+              <div>
+                <div style={{ fontWeight: 700, color: '#1e40af', fontSize: 11 }}>Current Month Gross (Prorated)</div>
+                <div style={{ color: '#3b82f6', fontSize: 11 }}>Includes LOP, OT, Arrears, Variables</div>
+              </div>
+              <div style={{ fontWeight: 700, color: '#1e40af', fontSize: 13 }}>₹{currentGross.toLocaleString()}</div>
+            </div>
+
+            {/* Projected Remaining */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#f0fdf4', borderRadius: 6, padding: '8px 12px', marginBottom: 10, fontFamily: 'monospace', border: '1px solid #bbf7d0' }}>
+              <div>
+                <div style={{ fontWeight: 700, color: '#15803d', fontSize: 11 }}>Projected Salary (Remaining: {futureMonths} months)</div>
+                <div style={{ color: '#16a34a', fontSize: 11 }}>Standard Gross ₹{standardGross.toLocaleString()} × {futureMonths} months</div>
+              </div>
+              <div style={{ fontWeight: 700, color: '#15803d', fontSize: 13 }}>₹{projectedSalary.toLocaleString()}</div>
+            </div>
+
+            {/* Total Annual Salary */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#1e293b', borderRadius: 6, padding: '10px 14px', fontFamily: 'monospace' }}>
+              <div>
+                <div style={{ fontWeight: 800, color: '#94a3b8', fontSize: 11, textTransform: 'uppercase', letterSpacing: 0.5 }}>Total Annual Salary</div>
+                <div style={{ color: '#7dd3fc', fontSize: 10 }}>YTD + Current Month + Projected Remaining</div>
+              </div>
+              <div style={{ fontWeight: 800, color: '#fff', fontSize: 18 }}>₹{totalAnnualSalary.toLocaleString()}</div>
             </div>
           </div>
 
