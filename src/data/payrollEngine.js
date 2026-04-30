@@ -181,25 +181,40 @@ export const evaluateTaxLiability = ({
 
   // --- Base Tax Calculation Helper ---
   const getBaseTax = (inc, reg, ageVal) => {
+    const fmtInc = v => Number.isInteger(v) ? v.toLocaleString('en-IN') : v.toLocaleString('en-IN', { maximumFractionDigits: 2 });
+    const fmtStr = (base, limit, pct, tax) => `₹${fmtInc(base)} + (₹${fmtInc(inc)} - ₹${fmtInc(limit)}) * ${pct}% = ₹${fmtInc(tax)}`;
+
     if (reg === 'old') {
       let ex = 250000, s5 = 12500, s10 = 112500;
       if (ageVal >= 80) { ex = 500000; s5 = 0; s10 = 100000; }
       else if (ageVal >= 60) { ex = 300000; s5 = 10000; s10 = 110000; }
       
-      if (inc <= 500000) return { tax: 0, detail: `Rebate u/s 87A → ₹0` };
-      if (inc > 1000000) return { tax: s10 + (inc - 1000000) * 0.3, detail: `₹${s10.toLocaleString()} + ((${Math.round(inc).toLocaleString()} - 10L) × 30%)` };
-      if (inc > 500000) return { tax: s5 + (inc - 500000) * 0.2, detail: `₹${s5.toLocaleString()} + ((${Math.round(inc).toLocaleString()} - 5L) × 20%)` };
-      if (inc > ex) return { tax: (inc - ex) * 0.05, detail: `(${Math.round(inc).toLocaleString()} - ${ex/100000}L) × 5%` };
-      return { tax: 0, detail: '₹0' };
+      let rawTax = 0, detail = '₹0';
+      if (inc > 1000000) { rawTax = s10 + (inc - 1000000) * 0.3; detail = fmtStr(s10, 1000000, 30, rawTax); }
+      else if (inc > 500000) { rawTax = s5 + (inc - 500000) * 0.2; detail = fmtStr(s5, 500000, 20, rawTax); }
+      else if (inc > ex) { rawTax = (inc - ex) * 0.05; detail = fmtStr(0, ex, 5, rawTax); }
+
+      let finalTax = rawTax;
+      if (inc <= 500000 && rawTax > 0) {
+        detail += ` (Fully Rebated u/s 87A)`;
+        finalTax = 0;
+      }
+      return { tax: finalTax, detail, rawTax };
     } else {
-      if (inc <= 1200000) return { tax: 0, detail: `Rebate u/s 87A → ₹0` };
-      if (inc > 2400000) return { tax: 300000 + (inc - 2400000) * 0.3, detail: `3L + ((${Math.round(inc).toLocaleString()} - 24L) × 30%)` };
-      if (inc > 2000000) return { tax: 200000 + (inc - 2000000) * 0.25, detail: `2L + ((${Math.round(inc).toLocaleString()} - 20L) × 25%)` };
-      if (inc > 1600000) return { tax: 120000 + (inc - 1600000) * 0.2, detail: `1.2L + ((${Math.round(inc).toLocaleString()} - 16L) × 20%)` };
-      if (inc > 1200000) return { tax: 60000 + (inc - 1200000) * 0.15, detail: `60k + ((${Math.round(inc).toLocaleString()} - 12L) × 15%)` };
-      if (inc > 800000) return { tax: 20000 + (inc - 800000) * 0.1, detail: `20k + ((${Math.round(inc).toLocaleString()} - 8L) × 10%)` };
-      if (inc > 400000) return { tax: (inc - 400000) * 0.05, detail: `(${Math.round(inc).toLocaleString()} - 4L) × 5%` };
-      return { tax: 0, detail: '₹0' };
+      let rawTax = 0, detail = '₹0';
+      if (inc > 2400000) { rawTax = 300000 + (inc - 2400000) * 0.3; detail = fmtStr(300000, 2400000, 30, rawTax); }
+      else if (inc > 2000000) { rawTax = 200000 + (inc - 2000000) * 0.25; detail = fmtStr(200000, 2000000, 25, rawTax); }
+      else if (inc > 1600000) { rawTax = 120000 + (inc - 1600000) * 0.2; detail = fmtStr(120000, 1600000, 20, rawTax); }
+      else if (inc > 1200000) { rawTax = 60000 + (inc - 1200000) * 0.15; detail = fmtStr(60000, 1200000, 15, rawTax); }
+      else if (inc > 800000) { rawTax = 20000 + (inc - 800000) * 0.1; detail = fmtStr(20000, 800000, 10, rawTax); }
+      else if (inc > 400000) { rawTax = (inc - 400000) * 0.05; detail = fmtStr(0, 400000, 5, rawTax); }
+      
+      let finalTax = rawTax;
+      if (inc <= 1200000 && rawTax > 0) {
+        detail += ` (Fully Rebated u/s 87A)`;
+        finalTax = 0;
+      }
+      return { tax: finalTax, detail, rawTax };
     }
   };
 
