@@ -3,10 +3,7 @@ import { isMetroCity } from '../../data/payrollEngine';
 
 const fmt = v => {
   if (!v) return '0';
-  const num = Number(v);
-  return Number.isInteger(num) 
-    ? num.toLocaleString('en-IN') 
-    : num.toLocaleString('en-IN', { minimumFractionDigits: 0, maximumFractionDigits: 20 });
+  return Math.round(Number(v)).toLocaleString('en-IN');
 };
 const shouldShowArrearBreakup = (settings, section) => {
   if (settings?.arrearDisplayMode !== 'breakup') return false;
@@ -20,9 +17,9 @@ function TaxReportModal({ emp, onClose }) {
   if (!emp) return null;
   const c = emp.computed;
   
-  const ytdVal = Math.round(c.ytdGross !== undefined ? c.ytdGross : (c.standardGrossForProj || c.standardGross) * c.pastMonths);
-  const currentVal = Math.round(c.grossSalary);
-  const projectedVal = Math.round((c.standardGrossForProj || c.standardGross) * c.futureMonths);
+  const ytdVal = c.ytdGross !== undefined ? c.ytdGross : (c.standardGrossForProj || c.standardGross) * c.pastMonths;
+  const currentVal = c.grossSalary;
+  const projectedVal = (c.standardGrossForProj || c.standardGross) * c.futureMonths;
   const annualGross = ytdVal + currentVal + projectedVal + (c.incomeFromOtherSources || 0);
 
   return (
@@ -46,9 +43,6 @@ function TaxReportModal({ emp, onClose }) {
             <div style={{ padding: '16px', display: 'flex', flexDirection: 'column', gap: 8, fontSize: 13 }}>
               
               {(() => {
-                const ytdVal = Math.round(c.ytdGross !== undefined ? c.ytdGross : (c.standardGrossForProj || c.standardGross) * c.pastMonths);
-                const currentVal = Math.round(c.grossSalary);
-                const projectedVal = Math.round((c.standardGrossForProj || c.standardGross) * c.futureMonths);
                 const displayedTotalAnnualSalary = ytdVal + currentVal + projectedVal;
 
                 return (

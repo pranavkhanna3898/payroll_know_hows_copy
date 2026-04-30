@@ -14,9 +14,9 @@ export default function Step2_Tax({ state }) {
   } = state;
 
   // ── Salary projection components ──────────────────────────────────────────
-  const ytdSalary   = ytdGross !== undefined ? ytdGross : Math.round((standardGrossForProj || standardGross) * pastMonths);
-  const currentGross = Math.round(grossSalary);
-  const projectedSalary = Math.round((standardGrossForProj || standardGross) * futureMonths);  // remaining months only
+  const ytdSalary   = ytdGross !== undefined ? ytdGross : ((standardGrossForProj || standardGross) * pastMonths);
+  const currentGross = grossSalary;
+  const projectedSalary = ((standardGrossForProj || standardGross) * futureMonths);  // remaining months only
   const totalAnnualSalary = ytdSalary + currentGross + projectedSalary;
 
   return (
@@ -151,7 +151,7 @@ export default function Step2_Tax({ state }) {
                   {ytdGross !== undefined ? 'From YTD records' : `Standard Gross ₹${(standardGrossForProj || standardGross).toLocaleString()} × ${pastMonths} months`}
                 </div>
               </div>
-              <div style={{ fontWeight: 700, color: '#334155', fontSize: 13 }}>₹{ytdSalary.toLocaleString()}</div>
+              <div style={{ fontWeight: 700, color: '#334155', fontSize: 13 }}>₹{Math.round(ytdSalary).toLocaleString('en-IN')}</div>
             </div>
 
             {/* Current Month */}
@@ -160,7 +160,7 @@ export default function Step2_Tax({ state }) {
                 <div style={{ fontWeight: 700, color: '#1e40af', fontSize: 11 }}>Current Month Gross (Prorated)</div>
                 <div style={{ color: '#3b82f6', fontSize: 11 }}>Includes LOP, OT, Arrears, Variables</div>
               </div>
-              <div style={{ fontWeight: 700, color: '#1e40af', fontSize: 13 }}>₹{currentGross.toLocaleString()}</div>
+              <div style={{ fontWeight: 700, color: '#1e40af', fontSize: 13 }}>₹{Math.round(currentGross).toLocaleString('en-IN')}</div>
             </div>
 
             {/* Projected Remaining */}
@@ -169,7 +169,7 @@ export default function Step2_Tax({ state }) {
                 <div style={{ fontWeight: 700, color: '#15803d', fontSize: 11 }}>Projected Salary (Remaining: {futureMonths} months)</div>
                 <div style={{ color: '#16a34a', fontSize: 11 }}>Standard Gross ₹{(standardGrossForProj || standardGross).toLocaleString()} × {futureMonths} months</div>
               </div>
-              <div style={{ fontWeight: 700, color: '#15803d', fontSize: 13 }}>₹{projectedSalary.toLocaleString()}</div>
+              <div style={{ fontWeight: 700, color: '#15803d', fontSize: 13 }}>₹{Math.round(projectedSalary).toLocaleString('en-IN')}</div>
             </div>
 
             {/* Income From Other Sources */}
@@ -189,7 +189,7 @@ export default function Step2_Tax({ state }) {
                 <div style={{ fontWeight: 800, color: '#94a3b8', fontSize: 11, textTransform: 'uppercase', letterSpacing: 0.5 }}>Total Annual Income</div>
                 <div style={{ color: '#7dd3fc', fontSize: 10 }}>Total projected salary + Other Income</div>
               </div>
-              <div style={{ fontWeight: 800, color: '#fff', fontSize: 18 }}>₹{Number.isInteger(totalAnnualSalary + Number(incomeFromOtherSources)) ? (totalAnnualSalary + Number(incomeFromOtherSources)).toLocaleString('en-IN') : (totalAnnualSalary + Number(incomeFromOtherSources)).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
+              <div style={{ fontWeight: 800, color: '#fff', fontSize: 18 }}>₹{Math.round(totalAnnualSalary + Number(incomeFromOtherSources)).toLocaleString('en-IN')}</div>
             </div>
           </div>
 
@@ -211,13 +211,13 @@ export default function Step2_Tax({ state }) {
             <div style={{ fontWeight: 700, color: '#475569', marginBottom: 6 }}>② Net Taxable Income</div>
             {taxRegime === 'new' ? (
               <div style={{ fontFamily: 'monospace', color: '#64748b', lineHeight: 1.7 }}>
-                Formula: ₹{annualGross.toLocaleString('en-IN', { maximumFractionDigits: 2 })} (Gross) - ₹75,000 (Standard Deduction) = Taxable Income<br/>
-                <span style={{ color: '#1e40af', fontWeight: 700 }}>Taxable Base = ₹{Number.isInteger(taxableIncome) ? taxableIncome.toLocaleString('en-IN') : taxableIncome.toLocaleString('en-IN', { maximumFractionDigits: 2 })}</span>
+                Formula: ₹{Math.round(annualGross).toLocaleString('en-IN')} (Gross) - ₹75,000 (Standard Deduction) = Taxable Income<br/>
+                <span style={{ color: '#1e40af', fontWeight: 700 }}>Taxable Base = ₹{Math.round(taxableIncome).toLocaleString('en-IN')}</span>
               </div>
             ) : (
               <div style={{ fontFamily: 'monospace', color: '#64748b', lineHeight: 1.7 }}>
-                Formula: ₹{annualGross.toLocaleString('en-IN', { maximumFractionDigits: 2 })} (Gross) - ₹{(annualGross - taxableIncome).toLocaleString('en-IN', { maximumFractionDigits: 2 })} (Total Deductions) = Taxable Income<br/>
-                <span style={{ color: '#1e40af', fontWeight: 700 }}>Taxable Base = ₹{Number.isInteger(taxableIncome) ? taxableIncome.toLocaleString('en-IN') : taxableIncome.toLocaleString('en-IN', { maximumFractionDigits: 2 })}</span>
+                Formula: ₹{Math.round(annualGross).toLocaleString('en-IN')} (Gross) - ₹{Math.round(annualGross - taxableIncome).toLocaleString('en-IN')} (Total Deductions) = Taxable Income<br/>
+                <span style={{ color: '#1e40af', fontWeight: 700 }}>Taxable Base = ₹{Math.round(taxableIncome).toLocaleString('en-IN')}</span>
               </div>
             )}
           </div>
