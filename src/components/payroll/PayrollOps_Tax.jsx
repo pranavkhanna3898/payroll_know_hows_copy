@@ -43,8 +43,6 @@ function TaxReportModal({ emp, onClose }) {
             <div style={{ padding: '16px', display: 'flex', flexDirection: 'column', gap: 8, fontSize: 13 }}>
               
               {(() => {
-                const displayedTotalAnnualSalary = ytdVal + currentVal + projectedVal;
-
                 return (
                   <>
                     {/* YTD */}
@@ -88,7 +86,7 @@ function TaxReportModal({ emp, onClose }) {
                     {/* Total Summary */}
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#e0f2fe', border: '1px solid #bae6fd', borderRadius: 6, padding: '12px 14px', marginTop: 4, fontFamily: 'monospace' }}>
                       <div style={{ fontWeight: 800, color: '#0369a1', fontSize: 14, textTransform: 'uppercase' }}>Total Annual Income (A)</div>
-                      <div style={{ fontWeight: 800, fontSize: 16, color: '#0369a1' }}>₹{fmt(displayedTotalAnnualSalary + (c.incomeFromOtherSources || 0))}</div>
+                      <div style={{ fontWeight: 800, fontSize: 16, color: '#0369a1' }}>₹{fmt(annualGross)}</div>
                     </div>
                   </>
                 );
