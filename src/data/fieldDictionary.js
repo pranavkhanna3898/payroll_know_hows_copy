@@ -36,6 +36,7 @@ export const FIELD_DICTIONARY = [
         name: "Employment Lifecycle",
         fields: [
           { name: "Date of Joining", type: "Date", description: "Start date of employment." },
+          { name: "Date of Birth", type: "Date", description: "Used to determine the exact age for senior and super-senior citizen tax slab exemptions during computation." },
           { name: "Exit Date", type: "Date", description: "Employee's last working day (triggers tax projection capping)." },
           { 
             name: "Exit Reason", 
@@ -137,7 +138,9 @@ export const FIELD_DICTIONARY = [
           { name: "Section 80D (Parents)", type: "Number", description: "Medical insurance premium for parents." },
           { name: "Senior Citizen Checkbox", type: "Boolean", description: "Increases 80D limit for parents to ₹50k if checked." },
           { name: "House Loan Interest (24b)", type: "Number", description: "Interest paid on home loan (Max ₹2L)." },
-          { name: "Donations (80G/80E)", type: "Number", description: "Charitable contributions or education loan interest." }
+          { name: "Donations (80G/80E)", type: "Number", description: "Charitable contributions or education loan interest." },
+          { name: "Income from Other Sources", type: "Number", description: "Any outside income declared by the employee to be factored into their total taxable income for TDS calculation." },
+          { name: "Previous Employer TDS", type: "Number", description: "Tax already deducted by a previous employer in the current financial year, used to offset remaining TDS deficit." }
         ]
       }
     ]

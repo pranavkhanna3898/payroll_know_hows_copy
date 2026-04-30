@@ -798,7 +798,7 @@ OT Amount = OT Rate × OT Hours
 ### 5.12 TDS on Salary Calculation
 ```
 Step 1: Compute Annual Gross Income
-  Annual Gross = Monthly Gross × 12 + Annual Variable Components
+  Annual Gross = Monthly Gross × 12 + Annual Variable Components + Income from Other Sources
 
 Step 2: Compute Exempt Allowances
   Less: HRA Exemption
@@ -835,8 +835,13 @@ Step 8: Less Deductions under Chapter VIA (Old Regime only)
 Step 9: Compute Tax
 
    --- OLD REGIME (FY 2025-26) ---
-   Up to ₹2,50,000       → Nil
-   ₹2,50,001 – ₹5,00,000 → 5%
+   Basic Exemption Limit based on Age:
+     < 60 years: ₹2,50,000
+     60–80 years (Senior): ₹3,00,000
+     > 80 years (Super Senior): ₹5,00,000
+   
+   Up to Exemption Limit → Nil
+   Exemption Limit – ₹5,00,000 → 5%
    ₹5,00,001 – ₹10,00,000 → 20%
    Above ₹10,00,000      → 30%
    
@@ -853,18 +858,22 @@ Step 9: Compute Tax
    
    87A Rebate: Full rebate if taxable income ≤ ₹12,00,000 (New Regime)
 
-Step 10: Add Surcharge (if applicable)
+Step 10: Add Surcharge and Marginal Relief
    Total Income > ₹50 lakh and ≤ ₹1 crore → 10% surcharge on tax
    Total Income > ₹1 crore and ≤ ₹2 crore → 15% surcharge
    Total Income > ₹2 crore and ≤ ₹5 crore → 25% (Old) / 25% (New)
    Total Income > ₹5 crore → 37% (Old) / 25% (New; capped at 25% for New Regime)
+   
+   Marginal Relief:
+   If income marginally exceeds the 87A threshold (e.g., 12L in New Regime) or a surcharge threshold, the tax is capped such that the additional tax does not exceed the additional income.
 
 Step 11: Add Health & Education Cess
   Cess = 4% × (Tax + Surcharge)
 
 Step 12: Annual Tax = Tax + Surcharge + Cess
 
-Step 13: Monthly TDS = (Annual Tax - TDS Already Deducted) / Remaining Months
+Step 13: Monthly TDS = (Annual Tax - TDS Already Deducted - Previous Employer TDS) / Remaining Months
+  *Note: Variable Pay TDS can be distributed using 'lump_sum' (deducted in the month paid) or 'spread' (spread over remaining months) mode.
 ```
 
 ### 5.13 NPS Employer Contribution Exemption

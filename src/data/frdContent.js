@@ -100,6 +100,7 @@ export const FRD_SECTIONS = [
           ["exit_date", "DATE", "Nullable — triggers exit/FnF projection"],
           ["exit_reason", "TEXT", "Resignation, Termination, Retirement"],
           ["salary_status", "TEXT", "active, withheld, absconding, fnf_pending"],
+          ["dob", "DATE", "Date of Birth (used to calculate age for senior citizen tax slabs)"],
         ]
       },
       {
@@ -141,7 +142,7 @@ export const FRD_SECTIONS = [
           ["financial_year", "TEXT", 'e.g., "2026-27"'],
           ["type", "TEXT", "it_declaration or reimbursement"],
           ["status", "TEXT", "draft → submitted → verified / rejected"],
-          ["submitted_data", "JSONB", "Employee's declared values and proof URLs"],
+          ["submitted_data", "JSONB", "Employee's declared values and proof URLs, including previous employer TDS and income from other sources"],
           ["verified_data", "JSONB", "Finance-approved values that feed into payrun computation"],
         ]
       }
@@ -205,9 +206,9 @@ export const FRD_SECTIONS = [
         C1["System auto-loads Finance-verified IT Declaration submissions from the employee_submissions table for the current Financial Year"]
         C2["System auto-fetches Year-To-Date TDS history by querying computed_data from all prior confirmed or completed payruns in this Financial Year"]
         C3["For each employee, an expandable Tax Card displays: YTD Tax already deducted, Projected Annual Tax liability, and computed Monthly TDS amount"]
-        C4["Admin can configure per-employee: Tax Regime selection between New and Old, Section 80C investments, 80D Medical for self and parents with senior citizen checkbox, NPS 80CCD-1B, Home Loan Interest under Section 24b, Donations under 80G and 80E, Savings Interest under 80TTA, Monthly Rent for HRA, and LTA claimed"]
-        C5["Engine evaluates the annual tax liability under the selected regime using projected annual gross, applicable deductions, and HRA exemption"]
-        C6["Monthly TDS is computed as: Annual Tax minus TDS already deducted, divided by the number of months remaining in the Financial Year"]
+        C4["Admin can configure per-employee: Tax Regime selection between New and Old, Section 80C investments, 80D Medical for self and parents with senior citizen checkbox, NPS 80CCD-1B, Home Loan Interest under Section 24b, Donations under 80G and 80E, Savings Interest under 80TTA, Monthly Rent for HRA, LTA claimed, Income from Other Sources, and Previous Employer TDS"]
+        C5["Engine evaluates the annual tax liability under the selected regime using projected annual gross, age-based slabs, applicable deductions, HRA exemption, Surcharge (if >50L), and Marginal Relief (for Surcharge or 87A)"]
+        C6["Monthly TDS is computed as: Annual Tax minus TDS already deducted minus Previous Employer TDS, divided by the number of months remaining in the Financial Year. Variable pay can optionally use lump-sum or spread tax modes."]
         C7["For employees with an exit date set, the system validates whether the computed TDS exceeds the net pay before TDS deduction. If it does, the TDS is auto-capped to prevent a negative net pay, and a warning is displayed."]
         C1 --> C2
         C2 --> C3
@@ -313,9 +314,9 @@ export const FRD_SECTIONS = [
           "System auto-loads Finance-verified IT Declaration submissions from the employee_submissions table for the current Financial Year",
           "System auto-fetches Year-To-Date TDS history by querying computed_data from all prior confirmed or completed payruns in this Financial Year",
           "For each employee, an expandable Tax Card displays: YTD Tax already deducted, Projected Annual Tax liability, and computed Monthly TDS amount",
-          "Admin can configure per-employee: Tax Regime selection between New and Old, Section 80C investments, 80D Medical for self and parents with senior citizen checkbox, NPS 80CCD-1B, Home Loan Interest under Section 24b, Donations under 80G and 80E, Savings Interest under 80TTA, Monthly Rent for HRA, and LTA claimed",
-          "Engine evaluates the annual tax liability under the selected regime using projected annual gross, applicable deductions, and HRA exemption",
-          "Monthly TDS is computed as: Annual Tax minus TDS already deducted, divided by the number of months remaining in the Financial Year",
+          "Admin can configure per-employee: Tax Regime selection between New and Old, Section 80C investments, 80D Medical for self and parents with senior citizen checkbox, NPS 80CCD-1B, Home Loan Interest under Section 24b, Donations under 80G and 80E, Savings Interest under 80TTA, Monthly Rent for HRA, LTA claimed, Income from Other Sources, and Previous Employer TDS",
+          "Engine evaluates the annual tax liability under the selected regime using projected annual gross, age-based slabs (Senior, Super Senior), applicable deductions, HRA exemption, Surcharge, and Marginal Relief",
+          "Monthly TDS is computed as: Annual Tax minus TDS already deducted minus Previous Employer TDS, divided by the number of months remaining in the Financial Year. Variable pay TDS mode can be selected (lump_sum vs spread).",
           "For employees with an exit date set, the system validates whether the computed TDS exceeds the net pay before TDS deduction. If it does, the TDS is auto-capped to prevent a negative net pay, and a warning is displayed.",
         ]
       },
@@ -537,13 +538,15 @@ export const FRD_SECTIONS = [
           { id: "F-31", name: "Annual Tax (any regime)", formula: "annualTax = baseTax × 1.04", notes: "baseTax from slab computation, 1.04 = 4% H&E Cess" },
           { id: "F-32", name: "Old Regime — 87A Rebate", formula: "if taxableIncome <= 500000 then annualTax = 0", notes: "" },
           { id: "F-33", name: "New Regime — 87A Rebate", formula: "if taxableIncome <= 1200000 then annualTax = 0", notes: "" },
+          { id: "F-33.1", name: "Surcharge", formula: "surcharge = baseTax × (10% to 37%)", notes: "Applied if taxable income > 50L (max 25% in new regime)" },
+          { id: "F-33.2", name: "Marginal Relief", formula: "relief = Tax with Surcharge - (Tax at threshold + (Income - threshold))", notes: "Capping mechanism for incomes marginally exceeding 12L (New Regime 87A) or Surcharge thresholds (50L, 1Cr, 2Cr, 5Cr)" },
         ]
       },
       {
         group: "6.10 Monthly TDS",
         items: [
-          { id: "F-34", name: "Remaining Tax", formula: "remainingTax = max(0, annualTax - tdsDeductedSoFar)", notes: "" },
-          { id: "F-35", name: "Monthly TDS", formula: "tds = remainingTax / effectiveMonthsRemaining", notes: "Spread evenly across remaining FY months" },
+          { id: "F-34", name: "Remaining Tax", formula: "remainingTax = max(0, annualTax - tdsDeductedSoFar - previousEmployerTDS)", notes: "" },
+          { id: "F-35", name: "Monthly TDS", formula: "tds = remainingTax / effectiveMonthsRemaining", notes: "Spread evenly across remaining FY months (unless lump_sum variable tax mode applies)" },
           { id: "F-36", name: "Exit TDS Auto-Cap", formula: "if (exit_date AND tds > netPayBeforeTDS) then tds = max(0, netPayBeforeTDS)", notes: "Prevents negative net pay" },
         ]
       },
@@ -631,15 +634,15 @@ Outputs: Monthly computed payroll including earnings breakdown, statutory deduct
 
     GROSS --> TAX_PROJ
 
-    TAX_PROJ["Tax Projection: Project annual gross as YTD actual gross plus current month gross plus standard gross times future months remaining. If an exit date is set, cap future months using ceiling of days-difference divided by 30."]
+    TAX_PROJ["Tax Projection: Project annual gross as YTD actual gross plus current month gross plus standard gross times future months remaining, plus Income from Other Sources. If an exit date is set, cap future months using ceiling of days-difference divided by 30."]
 
     TAX_PROJ --> TAX_CALC
 
-    TAX_CALC["Tax Computation: Call evaluateTaxLiability with the projected annual gross, selected tax regime, all Chapter VI-A deduction caps, HRA exemption inputs, and leave encashment exemption. The function applies the regime-specific slab rates and returns annual tax, formula trace, and HRA breakdown."]
+    TAX_CALC["Tax Computation: Call evaluateTaxLiability with the projected annual gross, selected tax regime, employee age (for senior citizen slabs), all Chapter VI-A deduction caps, HRA exemption inputs, and leave encashment exemption. The function applies the regime-specific slab rates, Surcharge, Marginal Relief (87A and Surcharge), and returns annual tax, formula trace, and HRA breakdown."]
 
     TAX_CALC --> TDS
 
-    TDS["Monthly TDS Calculation: Compute remaining tax as annual tax minus TDS already deducted year-to-date. Divide by effective months remaining in the Financial Year to get the monthly TDS amount."]
+    TDS["Monthly TDS Calculation: Compute remaining tax as annual tax minus TDS already deducted year-to-date minus previous employer TDS. Divide by effective months remaining in the Financial Year to get the monthly TDS amount. Applies lump-sum or spread distribution rules for variable pay."]
 
     TDS --> STAT
 
@@ -684,10 +687,10 @@ Outputs: Monthly computed payroll including earnings breakdown, statutory deduct
       oldRegime: {
         standardDeduction: "₹50,000",
         rebate: "Full rebate u/s 87A if taxable income ≤ ₹5,00,000",
-        notes: "Eligible for Chapter VI-A deductions (80C, 80D, 80CCD, 24(b), 80G, 80E, 80TTA/TTB). HRA Exemption u/s 10(13A): min(Actual HRA, Rent - 10% Basic, 50%/40% Basic).",
+        notes: "Eligible for Chapter VI-A deductions. Slab exemption limit depends on age: <60 yrs = 2.5L, 60-80 yrs (Senior Citizen) = 3L, >80 yrs (Super Senior) = 5L. Surcharge applicable >50L.",
         rows: [
-          ["Up to ₹2,50,000", "Nil"],
-          ["₹2,50,001 – ₹5,00,000", "5%"],
+          ["Up to Exemption Limit (2.5L/3L/5L)", "Nil"],
+          ["Exemption Limit – ₹5,00,000", "5%"],
           ["₹5,00,001 – ₹10,00,000", "20%"],
           ["Above ₹10,00,000", "30%"],
         ]
