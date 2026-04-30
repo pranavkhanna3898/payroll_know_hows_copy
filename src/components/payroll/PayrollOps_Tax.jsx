@@ -6,7 +6,7 @@ const fmt = v => {
   const num = Number(v);
   return Number.isInteger(num) 
     ? num.toLocaleString('en-IN') 
-    : num.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    : num.toLocaleString('en-IN', { minimumFractionDigits: 0, maximumFractionDigits: 20 });
 };
 const shouldShowArrearBreakup = (settings, section) => {
   if (settings?.arrearDisplayMode !== 'breakup') return false;
@@ -19,6 +19,11 @@ const shouldShowArrearBreakup = (settings, section) => {
 function TaxReportModal({ emp, onClose }) {
   if (!emp) return null;
   const c = emp.computed;
+  
+  const ytdVal = Math.round(c.ytdGross !== undefined ? c.ytdGross : (c.standardGrossForProj || c.standardGross) * c.pastMonths);
+  const currentVal = Math.round(c.grossSalary);
+  const projectedVal = Math.round((c.standardGrossForProj || c.standardGross) * c.futureMonths);
+  const annualGross = ytdVal + currentVal + projectedVal + (c.incomeFromOtherSources || 0);
 
   return (
     <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.6)', zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}>
@@ -136,7 +141,9 @@ function TaxReportModal({ emp, onClose }) {
             <div style={{ background: '#f8fafc', borderBottom: '1px solid #e2e8f0', padding: '12px 16px', display: 'grid', gridTemplateColumns: '1fr auto', alignItems: 'center' }}>
               <div>
                 <span style={{ fontSize: 12, fontWeight: 700, color: '#475569', textTransform: 'uppercase', letterSpacing: 0.5 }}>4. Tax Calculation Loop</span>
-                <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 2, fontFamily: 'monospace' }}>Formula: (A - B - C) = Taxable Income</div>
+                <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 2, fontFamily: 'monospace' }}>
+                  Formula: ₹{fmt(annualGross)} (Gross) - ₹{fmt(annualGross - c.taxableIncome)} (Total Deductions) = Taxable Income
+                </div>
               </div>
               <span style={{ fontWeight: 800, color: '#7c3aed', fontSize: 15 }}>Taxable Income: ₹{fmt(c.taxableIncome)}</span>
             </div>

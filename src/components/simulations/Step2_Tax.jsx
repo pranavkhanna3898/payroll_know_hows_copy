@@ -211,13 +211,13 @@ export default function Step2_Tax({ state }) {
             <div style={{ fontWeight: 700, color: '#475569', marginBottom: 6 }}>② Net Taxable Income</div>
             {taxRegime === 'new' ? (
               <div style={{ fontFamily: 'monospace', color: '#64748b', lineHeight: 1.7 }}>
-                Standard Deduction (New Regime) = ₹75,000<br/>
-                <span style={{ color: '#1e40af', fontWeight: 700 }}>Taxable Base = ₹{Math.round(taxableIncome).toLocaleString()}</span>
+                Formula: ₹{annualGross.toLocaleString('en-IN', { maximumFractionDigits: 2 })} (Gross) - ₹75,000 (Standard Deduction) = Taxable Income<br/>
+                <span style={{ color: '#1e40af', fontWeight: 700 }}>Taxable Base = ₹{Number.isInteger(taxableIncome) ? taxableIncome.toLocaleString('en-IN') : taxableIncome.toLocaleString('en-IN', { maximumFractionDigits: 2 })}</span>
               </div>
             ) : (
               <div style={{ fontFamily: 'monospace', color: '#64748b', lineHeight: 1.7 }}>
-                Total Deductions (80C, 80D, NPS, Home Loan, HRA, Standard) = ₹{Math.round(annualGross - taxableIncome).toLocaleString()}<br/>
-                <span style={{ color: '#1e40af', fontWeight: 700 }}>Taxable Base = ₹{Math.round(taxableIncome).toLocaleString()}</span>
+                Formula: ₹{annualGross.toLocaleString('en-IN', { maximumFractionDigits: 2 })} (Gross) - ₹{(annualGross - taxableIncome).toLocaleString('en-IN', { maximumFractionDigits: 2 })} (Total Deductions) = Taxable Income<br/>
+                <span style={{ color: '#1e40af', fontWeight: 700 }}>Taxable Base = ₹{Number.isInteger(taxableIncome) ? taxableIncome.toLocaleString('en-IN') : taxableIncome.toLocaleString('en-IN', { maximumFractionDigits: 2 })}</span>
               </div>
             )}
           </div>
