@@ -141,8 +141,8 @@ function TaxReportModal({ emp, onClose }) {
               <span style={{ fontWeight: 800, color: '#7c3aed', fontSize: 15 }}>Taxable Income: ₹{fmt(c.taxableIncome)}</span>
             </div>
             <div style={{ padding: '16px', fontSize: 13, display: 'flex', flexDirection: 'column', gap: 10 }}>
-               <div style={{ display: 'flex', justifyContent: 'space-between' }}><span style={{ color: '#64748b' }}>Base Tax (Progressive Slabs):</span> <strong>{c.taxFormulaDetail?.split(' = ')[0]?.split(' + ')[0] || '₹0'}</strong></div>
-               <div style={{ display: 'flex', justifyContent: 'space-between' }}><span style={{ color: '#64748b' }}>Rebate u/s 87A <i>(Income &lt;= {emp.taxRegime === 'new' ? '12L' : '5L'} ? -Base Tax : 0)</i>:</span> <strong style={{ color: '#059669' }}>{c.taxFormulaDetail?.includes('Rebate') ? '- Base Tax' : '₹0'}</strong></div>
+               <div style={{ display: 'flex', justifyContent: 'space-between' }}><span style={{ color: '#64748b' }}>Base Tax (Progressive Slabs):</span> <strong>{c.baseTaxFormula || '₹0'}</strong></div>
+               <div style={{ display: 'flex', justifyContent: 'space-between' }}><span style={{ color: '#64748b' }}>Rebate u/s 87A <i>(Income &lt;= {emp.taxRegime === 'new' ? '12L' : '5L'} ? -Base Tax : 0)</i>:</span> <strong style={{ color: '#059669' }}>{c.baseTaxFormula?.includes('Rebate') ? '- Base Tax' : '₹0'}</strong></div>
                <div style={{ display: 'flex', justifyContent: 'space-between' }}><span style={{ color: '#64748b' }}>Surcharge <i>(Income &gt; 50L)</i>:</span> <strong>{c.surchargeRate > 0 ? `+ ${c.surchargeRate * 100}%` : '₹0 (N/A)'}</strong></div>
                {c.marginalRelief > 0 && <div style={{ display: 'flex', justifyContent: 'space-between' }}><span style={{ color: '#64748b' }}>Marginal Relief:</span> <strong style={{ color: '#059669' }}>- ₹{fmt(c.marginalRelief)}</strong></div>}
                <div style={{ display: 'flex', justifyContent: 'space-between' }}><span style={{ color: '#64748b' }}>Health & Education CESS <i>((Base - Rebate + Surcharge) × 4%)</i>:</span> <strong>{c.annualTax > 0 ? '+ 4%' : '₹0'}</strong></div>

@@ -205,7 +205,8 @@ export const evaluateTaxLiability = ({
 
   const baseCalc = getBaseTax(taxableIncome, taxRegime, age);
   let baseTax = baseCalc.tax;
-  taxFormulaDetail = baseCalc.detail;
+  let baseTaxFormula = baseCalc.detail;
+  taxFormulaDetail = baseTaxFormula;
 
   // --- Surcharge & Marginal Relief ---
   let surchargeRate = 0, threshold = 0, lowerSurchargeRate = 0;
@@ -245,7 +246,7 @@ export const evaluateTaxLiability = ({
     annualTax = 0;
   }
 
-  return { taxableIncome, annualTax, taxFormulaDetail, calculatedHraExempt, hraFormulaString, hraActual, hraRentExcess, hraCityLimit, marginalRelief, surchargeRate };
+  return { taxableIncome, annualTax, taxFormulaDetail, baseTaxFormula, calculatedHraExempt, hraFormulaString, hraActual, hraRentExcess, hraCityLimit, marginalRelief, surchargeRate };
 };
 
 // ─── Core Payroll Computation ─────────────────────────────────────────────────
