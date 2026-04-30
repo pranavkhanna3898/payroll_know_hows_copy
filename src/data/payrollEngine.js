@@ -535,7 +535,7 @@ export const computeEmployeePayroll = (emp) => {
   });
 
   const { 
-    taxableIncome, annualTax, taxFormulaDetail, 
+    taxableIncome, annualTax, taxFormulaDetail, baseTaxFormula,
     calculatedHraExempt, hraFormulaString,
     hraActual, hraRentExcess, hraCityLimit, marginalRelief, surchargeRate
   } = taxCalc;
@@ -662,6 +662,7 @@ export const computeEmployeePayroll = (emp) => {
     annualTax: rnd(annualTax), 
     tds: finalTds,
     taxFormulaDetail, 
+    baseTaxFormula,
     calculatedHraExempt: rnd(calculatedHraExempt), 
     hraFormulaString,
     hraActual: rnd(hraActual), 
