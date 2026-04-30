@@ -75,10 +75,21 @@ function TaxReportModal({ emp, onClose }) {
                       <div style={{ fontWeight: 600, fontSize: 14, color: '#0369a1' }}>₹{fmt(projectedVal)}</div>
                     </div>
 
+                    {/* Income From Other Sources */}
+                    {(c.incomeFromOtherSources > 0) && (
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#fef3c7', borderRadius: 6, padding: '10px 12px', fontFamily: 'monospace' }}>
+                        <div>
+                          <div style={{ fontWeight: 700, color: '#b45309', fontSize: 12 }}>Income from Other Sources</div>
+                          <div style={{ fontSize: 11, color: '#92400e', marginTop: 2 }}>Outside salary income declared by employee</div>
+                        </div>
+                        <div style={{ fontWeight: 600, fontSize: 14, color: '#b45309' }}>+ ₹{fmt(c.incomeFromOtherSources)}</div>
+                      </div>
+                    )}
+
                     {/* Total Summary */}
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#e0f2fe', border: '1px solid #bae6fd', borderRadius: 6, padding: '12px 14px', marginTop: 4, fontFamily: 'monospace' }}>
-                      <div style={{ fontWeight: 800, color: '#0369a1', fontSize: 14, textTransform: 'uppercase' }}>Total Annual Salary (A)</div>
-                      <div style={{ fontWeight: 800, fontSize: 16, color: '#0369a1' }}>₹{fmt(displayedTotalAnnualSalary)}</div>
+                      <div style={{ fontWeight: 800, color: '#0369a1', fontSize: 14, textTransform: 'uppercase' }}>Total Annual Income (A)</div>
+                      <div style={{ fontWeight: 800, fontSize: 16, color: '#0369a1' }}>₹{fmt(displayedTotalAnnualSalary + (c.incomeFromOtherSources || 0))}</div>
                     </div>
                   </>
                 );
@@ -130,9 +141,10 @@ function TaxReportModal({ emp, onClose }) {
               <span style={{ fontWeight: 800, color: '#7c3aed', fontSize: 15 }}>Taxable Income: ₹{fmt(c.taxableIncome)}</span>
             </div>
             <div style={{ padding: '16px', fontSize: 13, display: 'flex', flexDirection: 'column', gap: 10 }}>
-               <div style={{ display: 'flex', justifyContent: 'space-between' }}><span style={{ color: '#64748b' }}>Base Tax (Progressive Slabs):</span> <strong>{c.taxFormulaDetail?.split(' = ')[0] || '₹0'}</strong></div>
-               <div style={{ display: 'flex', justifyContent: 'space-between' }}><span style={{ color: '#64748b' }}>Rebate u/s 87A <i>(Income &lt;= {emp.taxRegime === 'new' ? '7L' : '5L'} ? -Base Tax : 0)</i>:</span> <strong style={{ color: '#059669' }}>{c.taxFormulaDetail?.includes('Rebate') ? '- Base Tax' : '₹0'}</strong></div>
-               <div style={{ display: 'flex', justifyContent: 'space-between' }}><span style={{ color: '#64748b' }}>Surcharge <i>(Income &gt; 50L)</i>:</span> <strong>{c.taxFormulaDetail?.includes('Surcharge') ? 'Applied' : '₹0 (N/A)'}</strong></div>
+               <div style={{ display: 'flex', justifyContent: 'space-between' }}><span style={{ color: '#64748b' }}>Base Tax (Progressive Slabs):</span> <strong>{c.taxFormulaDetail?.split(' = ')[0]?.split(' + ')[0] || '₹0'}</strong></div>
+               <div style={{ display: 'flex', justifyContent: 'space-between' }}><span style={{ color: '#64748b' }}>Rebate u/s 87A <i>(Income &lt;= {emp.taxRegime === 'new' ? '12L' : '5L'} ? -Base Tax : 0)</i>:</span> <strong style={{ color: '#059669' }}>{c.taxFormulaDetail?.includes('Rebate') ? '- Base Tax' : '₹0'}</strong></div>
+               <div style={{ display: 'flex', justifyContent: 'space-between' }}><span style={{ color: '#64748b' }}>Surcharge <i>(Income &gt; 50L)</i>:</span> <strong>{c.surchargeRate > 0 ? `+ ${c.surchargeRate * 100}%` : '₹0 (N/A)'}</strong></div>
+               {c.marginalRelief > 0 && <div style={{ display: 'flex', justifyContent: 'space-between' }}><span style={{ color: '#64748b' }}>Marginal Relief:</span> <strong style={{ color: '#059669' }}>- ₹{fmt(c.marginalRelief)}</strong></div>}
                <div style={{ display: 'flex', justifyContent: 'space-between' }}><span style={{ color: '#64748b' }}>Health & Education CESS <i>((Base - Rebate + Surcharge) × 4%)</i>:</span> <strong>{c.annualTax > 0 ? '+ 4%' : '₹0'}</strong></div>
                <div style={{ borderTop: '1px dashed #cbd5e1', margin: '4px 0' }}></div>
                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 15, fontWeight: 700 }}><span style={{ color: '#0f172a' }}>Annual Tax Liability:</span> <span style={{ color: '#dc2626' }}>₹{fmt(c.annualTax)}</span></div>
@@ -142,8 +154,9 @@ function TaxReportModal({ emp, onClose }) {
           <div style={{ background: '#f0f9ff', border: '1px solid #bae6fd', borderRadius: 12, overflow: 'hidden', flexShrink: 0 }}>
             <div style={{ background: '#e0f2fe', padding: '10px 16px', fontSize: 12, fontWeight: 700, color: '#0369a1', textTransform: 'uppercase', letterSpacing: 0.5 }}>5. TDS & Recovery Logic</div>
             <div style={{ padding: '16px', fontSize: 13, display: 'flex', flexDirection: 'column', gap: 10 }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between' }}><span style={{ color: '#64748b' }}>YTD Tax Already Deducted:</span> <strong>₹{fmt(emp.tdsDeductedSoFar)}</strong></div>
-              <div style={{ display: 'flex', justifyContent: 'space-between' }}><span style={{ color: '#64748b' }}>Remaining Deficit <i>(Annual Tax - YTD Tax)</i>:</span> <strong>₹{fmt(Math.max(0, c.annualTax - (emp.tdsDeductedSoFar || 0)))}</strong></div>
+              <div style={{ display: 'flex', justifyContent: 'space-between' }}><span style={{ color: '#64748b' }}>YTD Tax Already Deducted (Current Employer):</span> <strong>₹{fmt(emp.tdsDeductedSoFar)}</strong></div>
+              <div style={{ display: 'flex', justifyContent: 'space-between' }}><span style={{ color: '#64748b' }}>Tax Deducted by Previous Employer:</span> <strong>₹{fmt(c.previousEmployerTDS)}</strong></div>
+              <div style={{ display: 'flex', justifyContent: 'space-between' }}><span style={{ color: '#64748b' }}>Remaining Deficit <i>(Annual Tax - Total YTD Tax)</i>:</span> <strong>₹{fmt(Math.max(0, c.annualTax - ((emp.tdsDeductedSoFar || 0) + (c.previousEmployerTDS || 0))))}</strong></div>
               <div style={{ display: 'flex', justifyContent: 'space-between' }}><span style={{ color: '#64748b' }}>Remaining Months in FY:</span> <strong>{emp.monthsRemaining}</strong></div>
               {emp.oneTimeTaxDeduction > 0 && <div style={{ display: 'flex', justifyContent: 'space-between' }}><span style={{ color: '#64748b' }}>One-Time Variable Tax <i>(Deducted explicitly this month)</i>:</span> <strong>₹{fmt(emp.oneTimeTaxDeduction)}</strong></div>}
               {c.variableTaxMode === 'lump_sum' && c.variableInducedTax > 0 && (
@@ -316,6 +329,16 @@ function TaxCard({ emp, activePayrun, updateTaxOverride, companySettings, onView
                     <Field label="One-Time Tax" hint="On Variable Bonus etc">
                       <input type="number" min="0" value={field('oneTimeTaxDeduction')} onChange={e => update('oneTimeTaxDeduction', Number(e.target.value))}
                         style={{ width: '100%', padding: '6px 10px', border: '1px solid #cbd5e1', borderRadius: 6, fontSize: 13, background: '#fef2f2', borderColor: '#fca5a5' }} />
+                    </Field>
+                  </div>
+                  <div style={{ display: 'flex', gap: 10, marginTop: 8 }}>
+                    <Field label="Other Income" hint="Added to Gross">
+                      <input type="number" min="0" value={field('incomeFromOtherSources')} onChange={e => update('incomeFromOtherSources', Number(e.target.value))}
+                        style={{ width: '100%', padding: '6px 10px', border: '1px solid #cbd5e1', borderRadius: 6, fontSize: 13 }} />
+                    </Field>
+                    <Field label="Prev Emp TDS" hint="Subtracted from Deficit">
+                      <input type="number" min="0" value={field('previousEmployerTDS')} onChange={e => update('previousEmployerTDS', Number(e.target.value))}
+                        style={{ width: '100%', padding: '6px 10px', border: '1px solid #cbd5e1', borderRadius: 6, fontSize: 13 }} />
                     </Field>
                   </div>
                   {c.variablePay > 0 && (

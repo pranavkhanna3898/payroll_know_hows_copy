@@ -10,6 +10,7 @@ export default function Step2_Tax({ state }) {
     hraActual, hraRentExcess, hraCityLimit,
     standardGross, standardGrossForProj, pastMonths, futureMonths, ytdGross,
     variableTaxMode, variableInducedTax, variablePay,
+    dob, incomeFromOtherSources, previousEmployerTDS,
   } = state;
 
   // ── Salary projection components ──────────────────────────────────────────
@@ -93,6 +94,18 @@ export default function Step2_Tax({ state }) {
             <input type="number" value={savingsInterest80TTA} disabled={taxRegime === 'new'} onChange={(e) => updateData('savingsInterest80TTA', e.target.value)} />
           </div>
           <div className="sim-input-group">
+            <label>Date of Birth (For Age limits)</label>
+            <input type="date" value={dob} onChange={(e) => updateData('dob', e.target.value)} />
+          </div>
+          <div className="sim-input-group">
+            <label>Income From Other Sources</label>
+            <input type="number" value={incomeFromOtherSources} onChange={(e) => updateData('incomeFromOtherSources', e.target.value)} />
+          </div>
+          <div className="sim-input-group">
+            <label>Prev Employer TDS</label>
+            <input type="number" value={previousEmployerTDS} onChange={(e) => updateData('previousEmployerTDS', e.target.value)} />
+          </div>
+          <div className="sim-input-group">
             <label>TDS Paid So Far (YTD)</label>
             <input type="number" value={tdsDeductedSoFar} onChange={(e) => updateData('tdsDeductedSoFar', e.target.value)} />
           </div>
@@ -159,13 +172,24 @@ export default function Step2_Tax({ state }) {
               <div style={{ fontWeight: 700, color: '#15803d', fontSize: 13 }}>₹{projectedSalary.toLocaleString()}</div>
             </div>
 
-            {/* Total Annual Salary */}
+            {/* Income From Other Sources */}
+            {Number(incomeFromOtherSources) > 0 && (
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#fef3c7', borderRadius: 6, padding: '8px 12px', marginBottom: 10, fontFamily: 'monospace', border: '1px solid #fde68a' }}>
+                <div>
+                  <div style={{ fontWeight: 700, color: '#b45309', fontSize: 11 }}>Income from Other Sources</div>
+                  <div style={{ color: '#d97706', fontSize: 11 }}>Added to Annual Gross</div>
+                </div>
+                <div style={{ fontWeight: 700, color: '#b45309', fontSize: 13 }}>+ ₹{Number(incomeFromOtherSources).toLocaleString()}</div>
+              </div>
+            )}
+
+            {/* Total Annual Income */}
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#1e293b', borderRadius: 6, padding: '10px 14px', fontFamily: 'monospace' }}>
               <div>
-                <div style={{ fontWeight: 800, color: '#94a3b8', fontSize: 11, textTransform: 'uppercase', letterSpacing: 0.5 }}>Total Annual Salary</div>
-                <div style={{ color: '#7dd3fc', fontSize: 10 }}>YTD + Current Month + Projected Remaining</div>
+                <div style={{ fontWeight: 800, color: '#94a3b8', fontSize: 11, textTransform: 'uppercase', letterSpacing: 0.5 }}>Total Annual Income</div>
+                <div style={{ color: '#7dd3fc', fontSize: 10 }}>Total projected salary + Other Income</div>
               </div>
-              <div style={{ fontWeight: 800, color: '#fff', fontSize: 18 }}>₹{Number.isInteger(totalAnnualSalary) ? totalAnnualSalary.toLocaleString('en-IN') : totalAnnualSalary.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
+              <div style={{ fontWeight: 800, color: '#fff', fontSize: 18 }}>₹{Number.isInteger(totalAnnualSalary + Number(incomeFromOtherSources)) ? (totalAnnualSalary + Number(incomeFromOtherSources)).toLocaleString('en-IN') : (totalAnnualSalary + Number(incomeFromOtherSources)).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
             </div>
           </div>
 
@@ -229,8 +253,8 @@ export default function Step2_Tax({ state }) {
             ) : (
               <>
                 <div style={{ fontFamily: 'monospace', color: '#7dd3fc', fontSize: 11, lineHeight: 1.8 }}>
-                  = (Annual Tax − TDS Deducted So Far) ÷ Remaining Months<br/>
-                  = (₹{Math.round(annualTax).toLocaleString()} − ₹{tdsDeductedSoFar.toLocaleString()}) ÷ {monthsRemaining} months
+                  = (Annual Tax − Total TDS So Far) ÷ Remaining Months<br/>
+                  = (₹{Math.round(annualTax).toLocaleString()} − ₹{(Number(tdsDeductedSoFar) + Number(previousEmployerTDS)).toLocaleString()}) ÷ {monthsRemaining} months
                 </div>
                 <div style={{ fontSize: 20, fontWeight: 800, color: '#fff', marginTop: 8 }}>
                   = ₹ {tds.toLocaleString(undefined, {maximumFractionDigits: 2})} / month

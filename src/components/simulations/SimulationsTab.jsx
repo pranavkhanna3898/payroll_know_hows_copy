@@ -92,6 +92,9 @@ export default function SimulationsTab() {
     payrollMonth: new Date().getMonth(),
     ptHalfYearlyMode: 'lump_sum',
     variableTaxMode: 'spread',
+    dob: '1990-01-01',
+    incomeFromOtherSources: 0,
+    previousEmployerTDS: 0,
 
     // Step 3/4/5 Inputs
     empName: "John Doe",

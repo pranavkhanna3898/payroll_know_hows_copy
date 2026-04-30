@@ -125,6 +125,7 @@ export const getLWF = (st, payrollMonth = -1, dateOfJoining, payrollYear) => {
 export const evaluateTaxLiability = ({
   annualGross,
   taxRegime,
+  age = 30, // Age for Senior Citizen slab limits in Old Regime
   investments80C = 0,
   medical80D_self = 0, // Self & family limit 25k
   medical80D_parents = 0, // Parent limit 25k or 50k
@@ -174,57 +175,77 @@ export const evaluateTaxLiability = ({
     // Total Deductions (Old Regime)
     const totalDeductions = capped80C + capped80D + cappedNPS + cappedHomeLoan + deductions80GE + savingsInterest80TTA + ltaClaimed + 50000 + calculatedHraExempt + leaveEncashmentExempt;
     taxableIncome = Math.max(0, annualGross - totalDeductions);
-
-    let baseTax = 0;
-    if (taxableIncome > 1000000) {
-      baseTax = 112500 + (taxableIncome - 1000000) * 0.3;
-      taxFormulaDetail = `112,500 + ((${Math.round(taxableIncome).toLocaleString()} - 10L) × 30%)`;
-    } else if (taxableIncome > 500000) {
-      baseTax = 12500 + (taxableIncome - 500000) * 0.2;
-      taxFormulaDetail = `12,500 + ((${Math.round(taxableIncome).toLocaleString()} - 5L) × 20%)`;
-    } else if (taxableIncome > 250000) {
-      baseTax = (taxableIncome - 250000) * 0.05;
-      taxFormulaDetail = `(${Math.round(taxableIncome).toLocaleString()} - 2.5L) × 5%`;
-    }
-    if (taxableIncome <= 500000) {
-      annualTax = 0;
-      taxFormulaDetail = `${taxFormulaDetail || '0'} → Rebate u/s 87A → ₹0`;
-    } else {
-      annualTax = baseTax * 1.04;
-      taxFormulaDetail = `${taxFormulaDetail} = ₹${Math.round(baseTax).toLocaleString()} + 4% Cess`;
-    }
   } else {
     taxableIncome = Math.max(0, annualGross - 75000 - leaveEncashmentExempt);
-    let baseTax = 0;
-    if (taxableIncome > 2400000) {
-      baseTax = 300000 + (taxableIncome - 2400000) * 0.3;
-      taxFormulaDetail = `3L + ((${Math.round(taxableIncome).toLocaleString()} - 24L) × 30%)`;
-    } else if (taxableIncome > 2000000) {
-      baseTax = 200000 + (taxableIncome - 2000000) * 0.25;
-      taxFormulaDetail = `2L + ((${Math.round(taxableIncome).toLocaleString()} - 20L) × 25%)`;
-    } else if (taxableIncome > 1600000) {
-      baseTax = 120000 + (taxableIncome - 1600000) * 0.2;
-      taxFormulaDetail = `1.2L + ((${Math.round(taxableIncome).toLocaleString()} - 16L) × 20%)`;
-    } else if (taxableIncome > 1200000) {
-      baseTax = 60000 + (taxableIncome - 1200000) * 0.15;
-      taxFormulaDetail = `60k + ((${Math.round(taxableIncome).toLocaleString()} - 12L) × 15%)`;
-    } else if (taxableIncome > 800000) {
-      baseTax = 20000 + (taxableIncome - 800000) * 0.1;
-      taxFormulaDetail = `20k + ((${Math.round(taxableIncome).toLocaleString()} - 8L) × 10%)`;
-    } else if (taxableIncome > 400000) {
-      baseTax = (taxableIncome - 400000) * 0.05;
-      taxFormulaDetail = `(${Math.round(taxableIncome).toLocaleString()} - 4L) × 5%`;
-    }
-    if (taxableIncome <= 1200000) {
-      annualTax = 0;
-      taxFormulaDetail = `${taxFormulaDetail || '0'} → Rebate u/s 87A → ₹0`;
+  }
+
+  // --- Base Tax Calculation Helper ---
+  const getBaseTax = (inc, reg, ageVal) => {
+    if (reg === 'old') {
+      let ex = 250000, s5 = 12500, s10 = 112500;
+      if (ageVal >= 80) { ex = 500000; s5 = 0; s10 = 100000; }
+      else if (ageVal >= 60) { ex = 300000; s5 = 10000; s10 = 110000; }
+      
+      if (inc <= 500000) return { tax: 0, detail: `Rebate u/s 87A → ₹0` };
+      if (inc > 1000000) return { tax: s10 + (inc - 1000000) * 0.3, detail: `₹${s10.toLocaleString()} + ((${Math.round(inc).toLocaleString()} - 10L) × 30%)` };
+      if (inc > 500000) return { tax: s5 + (inc - 500000) * 0.2, detail: `₹${s5.toLocaleString()} + ((${Math.round(inc).toLocaleString()} - 5L) × 20%)` };
+      if (inc > ex) return { tax: (inc - ex) * 0.05, detail: `(${Math.round(inc).toLocaleString()} - ${ex/100000}L) × 5%` };
+      return { tax: 0, detail: '₹0' };
     } else {
-      annualTax = baseTax * 1.04;
-      taxFormulaDetail = `${taxFormulaDetail} = ₹${Math.round(baseTax).toLocaleString()} + 4% Cess`;
+      if (inc <= 1200000) return { tax: 0, detail: `Rebate u/s 87A → ₹0` };
+      if (inc > 2400000) return { tax: 300000 + (inc - 2400000) * 0.3, detail: `3L + ((${Math.round(inc).toLocaleString()} - 24L) × 30%)` };
+      if (inc > 2000000) return { tax: 200000 + (inc - 2000000) * 0.25, detail: `2L + ((${Math.round(inc).toLocaleString()} - 20L) × 25%)` };
+      if (inc > 1600000) return { tax: 120000 + (inc - 1600000) * 0.2, detail: `1.2L + ((${Math.round(inc).toLocaleString()} - 16L) × 20%)` };
+      if (inc > 1200000) return { tax: 60000 + (inc - 1200000) * 0.15, detail: `60k + ((${Math.round(inc).toLocaleString()} - 12L) × 15%)` };
+      if (inc > 800000) return { tax: 20000 + (inc - 800000) * 0.1, detail: `20k + ((${Math.round(inc).toLocaleString()} - 8L) × 10%)` };
+      if (inc > 400000) return { tax: (inc - 400000) * 0.05, detail: `(${Math.round(inc).toLocaleString()} - 4L) × 5%` };
+      return { tax: 0, detail: '₹0' };
+    }
+  };
+
+  const baseCalc = getBaseTax(taxableIncome, taxRegime, age);
+  let baseTax = baseCalc.tax;
+  taxFormulaDetail = baseCalc.detail;
+
+  // --- Surcharge & Marginal Relief ---
+  let surchargeRate = 0, threshold = 0, lowerSurchargeRate = 0;
+  if (taxRegime === 'new' && taxableIncome > 50000000) { // 5 Cr
+    surchargeRate = 0.25; threshold = 50000000; lowerSurchargeRate = 0.25;
+  } else if (taxRegime === 'old' && taxableIncome > 50000000) {
+    surchargeRate = 0.37; threshold = 50000000; lowerSurchargeRate = 0.25;
+  } else if (taxableIncome > 20000000) { // 2 Cr
+    surchargeRate = 0.25; threshold = 20000000; lowerSurchargeRate = 0.15;
+  } else if (taxableIncome > 10000000) { // 1 Cr
+    surchargeRate = 0.15; threshold = 10000000; lowerSurchargeRate = 0.10;
+  } else if (taxableIncome > 5000000) { // 50 L
+    surchargeRate = 0.10; threshold = 5000000; lowerSurchargeRate = 0;
+  }
+
+  let taxWithSurcharge = baseTax + (baseTax * surchargeRate);
+  let marginalRelief = 0;
+
+  if (surchargeRate > 0) {
+    taxFormulaDetail += ` + ${surchargeRate * 100}% Surcharge`;
+    let taxAtThreshold = getBaseTax(threshold, taxRegime, age).tax;
+    let taxAtThresholdWithSurcharge = taxAtThreshold + (taxAtThreshold * lowerSurchargeRate);
+    let extraTax = taxWithSurcharge - taxAtThresholdWithSurcharge;
+    let extraIncome = taxableIncome - threshold;
+    if (extraTax > extraIncome) {
+      marginalRelief = extraTax - extraIncome;
+      taxFormulaDetail += ` - Marginal Relief (₹${Math.round(marginalRelief).toLocaleString()})`;
     }
   }
 
-  return { taxableIncome, annualTax, taxFormulaDetail, calculatedHraExempt, hraFormulaString, hraActual, hraRentExcess, hraCityLimit };
+  let finalTaxBeforeCess = Math.max(0, taxWithSurcharge - marginalRelief);
+  
+  if (finalTaxBeforeCess > 0) {
+    annualTax = finalTaxBeforeCess * 1.04;
+    taxFormulaDetail = `${taxFormulaDetail} + 4% Cess`;
+  } else {
+    annualTax = 0;
+  }
+
+  return { taxableIncome, annualTax, taxFormulaDetail, calculatedHraExempt, hraFormulaString, hraActual, hraRentExcess, hraCityLimit, marginalRelief, surchargeRate };
 };
 
 // ─── Core Payroll Computation ─────────────────────────────────────────────────
@@ -268,12 +289,25 @@ export const computeEmployeePayroll = (emp) => {
     payrollMonth = -1,
     payrollYear,
     dateOfJoining,
+    dob,
     ptHalfYearlyMode = 'lump_sum',
     exit_date,
     exit_reason,
     salary_status = 'active',
     variableTaxMode = 'spread',
+    incomeFromOtherSources = 0,
+    previousEmployerTDS = 0,
   } = emp;
+
+  // Calculate age based on DOB and payrollYear
+  let age = 30; // Default
+  if (dob) {
+    const dobDate = new Date(dob);
+    const pYear = Number.isFinite(Number(payrollYear)) ? Number(payrollYear) : new Date().getFullYear();
+    if (!isNaN(dobDate.getTime())) {
+      age = pYear - dobDate.getFullYear();
+    }
+  }
 
   if (salary_status === 'withheld' || salary_status === 'absconding') {
     return {
@@ -458,7 +492,7 @@ export const computeEmployeePayroll = (emp) => {
     : Math.max(0, 12 - effectiveMonthsRemaining);
   const futureMonths = Math.max(0, effectiveMonthsRemaining - 1);
 
-  const annualGross = (ytdGross !== undefined ? ytdGross : standardGrossForProj * pastMonths) + grossSalary + (standardGrossForProj * futureMonths);
+  const annualGross = (ytdGross !== undefined ? ytdGross : standardGrossForProj * pastMonths) + grossSalary + (standardGrossForProj * futureMonths) + Number(incomeFromOtherSources);
   const annualRent = monthlyRentPaid * 12;
   const projectedAnnualBasic = (ytdBasic !== undefined ? ytdBasic : standardBasic * pastMonths) + basic + (standardBasic * futureMonths);
   const projectedAnnualHRA = (ytdHRA !== undefined ? ytdHRA : standardHRA * pastMonths) + hra + (standardHRA * futureMonths);
@@ -466,6 +500,7 @@ export const computeEmployeePayroll = (emp) => {
   const taxCalc = evaluateTaxLiability({
     annualGross,
     taxRegime,
+    age,
     investments80C,
     medical80D_self,
     medical80D_parents,
@@ -486,9 +521,10 @@ export const computeEmployeePayroll = (emp) => {
   const { 
     taxableIncome, annualTax, taxFormulaDetail, 
     calculatedHraExempt, hraFormulaString,
-    hraActual, hraRentExcess, hraCityLimit
+    hraActual, hraRentExcess, hraCityLimit, marginalRelief, surchargeRate
   } = taxCalc;
-  const remainingTax = Math.max(0, annualTax - tdsDeductedSoFar);
+  const prevEmployerTDSAmount = Number(previousEmployerTDS) || 0;
+  const remainingTax = Math.max(0, annualTax - (tdsDeductedSoFar + prevEmployerTDSAmount));
   const oneTimeTax = Number(oneTimeTaxDeduction) || 0;
 
   // ── Variable Tax Mode ──────────────────────────────────────────────────────
@@ -501,6 +537,7 @@ export const computeEmployeePayroll = (emp) => {
     const regularTaxCalc = evaluateTaxLiability({
       annualGross: Math.max(0, annualGrossWithoutVar),
       taxRegime,
+      age,
       investments80C,
       medical80D_self,
       medical80D_parents,
@@ -519,7 +556,7 @@ export const computeEmployeePayroll = (emp) => {
     });
     const regularAnnualTax = regularTaxCalc.annualTax;
     variableInducedTax = Math.max(0, annualTax - regularAnnualTax);
-    const regularRemainingTax = Math.max(0, regularAnnualTax - tdsDeductedSoFar);
+    const regularRemainingTax = Math.max(0, regularAnnualTax - (tdsDeductedSoFar + prevEmployerTDSAmount));
     const regularMonthlyTDS = effectiveMonthsRemaining > 0 ? regularRemainingTax / effectiveMonthsRemaining : 0;
     tds = regularMonthlyTDS + variableInducedTax + oneTimeTax;
   } else {
@@ -621,6 +658,7 @@ export const computeEmployeePayroll = (emp) => {
     ytdGross: ytdGross !== undefined ? rnd(ytdGross) : undefined, 
     monthsRemaining: effectiveMonthsRemaining,
     standardGrossForProj: rnd(standardGrossForProj),
+    age,
 
     // Deductions
     pfEmployee: rnd(pfEmployee), 
@@ -635,6 +673,10 @@ export const computeEmployeePayroll = (emp) => {
     netPay: finalNetPay,
     arrearsBreakup: arrearsBreakup.map(a => ({...a, amount: rnd(a.amount)})), 
     arrearsValidation, 
-    engineValidations
+    engineValidations,
+    incomeFromOtherSources: rnd(Number(incomeFromOtherSources) || 0),
+    previousEmployerTDS: rnd(prevEmployerTDSAmount),
+    marginalRelief: rnd(marginalRelief),
+    surchargeRate,
   };
 };
