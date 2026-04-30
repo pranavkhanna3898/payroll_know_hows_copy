@@ -154,6 +154,7 @@ const convertStructure = (structure, toAnnual) => {
           <Grid cols={3}>
             <Field label="Employee Code"><TextInput value={editingEmp.emp_code} onChange={v => setEditingEmp({...editingEmp, emp_code: v})} /></Field>
             <Field label="Full Name"><TextInput value={editingEmp.name} onChange={v => setEditingEmp({...editingEmp, name: v})} /></Field>
+            <Field label="Date of Birth"><input type="date" value={editingEmp.dob || ''} onChange={e => setEditingEmp({...editingEmp, dob: e.target.value})} style={{ padding: '8px 12px', border: '1px solid #cbd5e1', borderRadius: 6, fontSize: 13, width: '100%' }} /></Field>
             <Field label="Department"><TextInput value={editingEmp.department} onChange={v => setEditingEmp({...editingEmp, department: v})} /></Field>
             <Field label="Designation"><TextInput value={editingEmp.designation} onChange={v => setEditingEmp({...editingEmp, designation: v})} /></Field>
             <Field label="Profile Status">

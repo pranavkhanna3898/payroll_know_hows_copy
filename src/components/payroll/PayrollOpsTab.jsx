@@ -259,7 +259,7 @@ export default function PayrollOpsTab() {
           payrollYear: activePayrun.year || Number((activePayrun.month_year || '').split(' ')[1]) || new Date().getFullYear(),
           ptHalfYearlyMode: companySettings?.ptHalfYearlyMode || 'lump_sum',
           variableTaxMode: taxOv.variableTaxMode ?? companySettings?.variableTaxMode ?? 'spread',
-          dob: emp.dob,
+          dob: e.dob,
           incomeFromOtherSources: taxOv.incomeFromOtherSources || 0,
           previousEmployerTDS: taxOv.previousEmployerTDS || 0,
         };
