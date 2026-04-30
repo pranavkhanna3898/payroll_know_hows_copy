@@ -240,6 +240,16 @@ export const evaluateTaxLiability = ({
   let taxWithSurcharge = baseTax + (baseTax * surchargeRate);
   let marginalRelief = 0;
 
+  // --- Marginal Relief for 87A (New Regime only) ---
+  // If income slightly exceeds 12L, tax shouldn't exceed the income above 12L
+  if (taxRegime === 'new' && taxableIncome > 1200000 && surchargeRate === 0) {
+    let extraIncome = taxableIncome - 1200000;
+    if (baseTax > extraIncome) {
+      marginalRelief = baseTax - extraIncome;
+      taxFormulaDetail += ` - Marginal Relief 87A (₹${Math.round(marginalRelief).toLocaleString('en-IN')})`;
+    }
+  }
+
   if (surchargeRate > 0) {
     taxFormulaDetail += ` + ${surchargeRate * 100}% Surcharge`;
     let taxAtThreshold = getBaseTax(threshold, taxRegime, age).tax;
@@ -663,6 +673,8 @@ export const computeEmployeePayroll = (emp) => {
     tds: finalTds,
     taxFormulaDetail, 
     baseTaxFormula,
+    marginalRelief: rnd(marginalRelief),
+    surchargeRate,
     calculatedHraExempt: rnd(calculatedHraExempt), 
     hraFormulaString,
     hraActual: rnd(hraActual), 
